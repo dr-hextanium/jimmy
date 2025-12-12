@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.subsystems
+package org.firstinspires.ftc.teamcode.hardware
 
 import com.qualcomm.robotcore.hardware.DcMotor.RunMode
 import com.qualcomm.robotcore.hardware.DcMotor.ZeroPowerBehavior.FLOAT

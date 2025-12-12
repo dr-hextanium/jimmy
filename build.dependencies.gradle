@@ -5,6 +5,7 @@ repositories {
     maven {
         name "dairyReleases"
         url "https://repo.dairy.foundation/releases"
+        url = 'https://maven.brott.dev/'
     }
 }
 
@@ -24,5 +25,6 @@ dependencies {
     implementation "com.bylazar:fullpanels:1.0.10"
     implementation 'com.pedropathing:ftc:2.0.4'
     implementation 'com.pedropathing:telemetry:1.0.0'
+    implementation 'com.acmerobotics.dashboard:dashboard:0.5.1'
 }
 

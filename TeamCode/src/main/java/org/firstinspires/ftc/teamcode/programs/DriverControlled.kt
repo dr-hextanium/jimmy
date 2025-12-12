@@ -5,13 +5,12 @@ import dev.frozenmilk.dairy.mercurial.continuations.Continuations.exec
 import dev.frozenmilk.dairy.mercurial.continuations.Continuations.ifHuh
 import dev.frozenmilk.dairy.mercurial.continuations.Continuations.loop
 import dev.frozenmilk.dairy.mercurial.continuations.Continuations.scope
-import dev.frozenmilk.dairy.mercurial.continuations.Continuations.sequence
 import dev.frozenmilk.dairy.mercurial.ftc.Mercurial
-import org.firstinspires.ftc.teamcode.subsystems.Drivetrain
-import org.firstinspires.ftc.teamcode.subsystems.Intake
-import org.firstinspires.ftc.teamcode.subsystems.Launcher
-import org.firstinspires.ftc.teamcode.subsystems.Limelight
-import org.firstinspires.ftc.teamcode.subsystems.Transfer
+import org.firstinspires.ftc.teamcode.hardware.Drivetrain
+import org.firstinspires.ftc.teamcode.hardware.Intake
+import org.firstinspires.ftc.teamcode.hardware.Launcher
+import org.firstinspires.ftc.teamcode.hardware.Limelight
+import org.firstinspires.ftc.teamcode.hardware.Transfer
 import kotlin.math.PI
 
 val DriverControlled = Mercurial.teleop {
