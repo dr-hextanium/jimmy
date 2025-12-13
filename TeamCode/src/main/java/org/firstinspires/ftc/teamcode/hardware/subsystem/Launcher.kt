@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.hardware.subsystemsNew
+package org.firstinspires.ftc.teamcode.hardware.subsystem
 
 import com.qualcomm.robotcore.hardware.DcMotor.RunMode
 import com.qualcomm.robotcore.hardware.DcMotor.ZeroPowerBehavior.FLOAT
@@ -10,10 +10,9 @@ import org.firstinspires.ftc.teamcode.hardware.ISubsystem
 import org.firstinspires.ftc.teamcode.hardware.Robot
 import org.firstinspires.ftc.teamcode.utility.absPercentDifference
 
-class LauncherNew(val left: DcMotorEx, val right: DcMotorEx) : ISubsystem {
+class Launcher(val left: DcMotorEx, val right: DcMotorEx) : ISubsystem {
 	val motors = listOf(left, right)
 	var targetRPM = 0.0
-	var state = State.STOPPED
 
 	val averageRPM: Double
 		get() = (left.velocity + right.velocity) / 2.0
@@ -33,39 +32,14 @@ class LauncherNew(val left: DcMotorEx, val right: DcMotorEx) : ISubsystem {
 		return calculated.coerceIn(0.0, MAX_RPM)
 	}
 
-	fun setTargetRPM(message: Message, distance: Double = 0.0, rpm: Double = 0.0) {
-		when(message) {
-			Message.STOP -> {
-				targetRPM = 0.0
-				state = State.STOPPED
-			}
-			Message.SPIN_UP -> {
-				targetRPM = distanceToRPM(distanceToRPM(distance))
-				state = if (isReady) State.AT_SPEED else State.SPINNING_UP
-			}
-			Message.OVERRIDE_RPM -> {
-				targetRPM = rpm
+    fun setTargetRPMByDistance(distance: Double) {
+        setTargetRPM(distanceToRPM(distance))
+    }
 
-				state = if (isReady) State.AT_SPEED else State.SPINNING_UP
-			}
-		}
-
-		when(state) {
-			State.STOPPED -> {
-				motors.forEach { it.velocity = 0.0 }
-			}
-			State.SPINNING_UP -> {
-				motors.forEach { it.velocity = targetRPM }
-			}
-			State.AT_SPEED -> {
-				motors.forEach { it.velocity = targetRPM }
-			}
-		}
-	}
+	fun setTargetRPM(rpm: Double) { targetRPM = rpm }
 
 	override fun reset() {
 		targetRPM = 0.0
-		state = State.STOPPED
 
 		right.direction = FORWARD
 		left.direction = REVERSE
@@ -89,22 +63,15 @@ class LauncherNew(val left: DcMotorEx, val right: DcMotorEx) : ISubsystem {
 		Robot.telemetry.addData("right velocity", right.velocity)
 	}
 
-	override fun write() {  }
-
-	enum class State {
-		STOPPED,
-		SPINNING_UP,
-		AT_SPEED
-	}
-
-	enum class Message {
-		STOP,
-		SPIN_UP,
-		OVERRIDE_RPM
-	}
+	override fun write() {
+        if (!atSpeed) {
+            motors.forEach { it.velocity = targetRPM * RPM_TO_TPS }
+        }
+    }
 
 	companion object {
-		const val MAX_RPM = 0.0 // ticks per second
+		const val MAX_RPM = 0.0
+        const val RPM_TO_TPS = (1.0 / 60.0) * (28.0 / 1.0) * (12.0 / 17.0)
 
 		// the maximum amount that the left and right motors can deviate at any given time
 		const val MAXIMUM_DEVIANCE = 0.1 // 10%

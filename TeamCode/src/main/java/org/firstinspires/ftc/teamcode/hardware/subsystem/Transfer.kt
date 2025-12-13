@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.hardware.subsystemsNew
+package org.firstinspires.ftc.teamcode.hardware.subsystem
 
 import com.qualcomm.robotcore.hardware.DcMotor.RunMode
 import com.qualcomm.robotcore.hardware.DcMotor.ZeroPowerBehavior.BRAKE
@@ -7,7 +7,7 @@ import com.qualcomm.robotcore.hardware.DcMotorSimple.Direction.FORWARD
 import org.firstinspires.ftc.teamcode.hardware.ISubsystem
 import org.firstinspires.ftc.teamcode.hardware.Robot
 
-class IntakeNew(val motor: DcMotorEx) : ISubsystem {
+class Transfer(val motor: DcMotorEx) : ISubsystem {
 	var power = 0.0
 
 	override fun reset() {
@@ -20,7 +20,7 @@ class IntakeNew(val motor: DcMotorEx) : ISubsystem {
 	override fun read() {  }
 
 	override fun update() {
-		Robot.telemetry.addData("intake power", power)
+		Robot.telemetry.addData("transfer power", power)
 	}
 
 	override fun write() {
@@ -28,7 +28,7 @@ class IntakeNew(val motor: DcMotorEx) : ISubsystem {
 	}
 
 	companion object {
-		const val POWER_INTAKE = 1.0
-		const val POWER_REVERSE = -1.0
+		const val FEED_POWER = 1.0
+		const val REVERSE_POWER = -1.0
 	}
 }

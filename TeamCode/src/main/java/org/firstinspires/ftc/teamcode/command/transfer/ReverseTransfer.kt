@@ -1,11 +1,11 @@
-package org.firstinspires.ftc.teamcode.command.Transfer
+package org.firstinspires.ftc.teamcode.command.transfer
 
 import org.firstinspires.ftc.teamcode.command.CommandTemplate
 import org.firstinspires.ftc.teamcode.hardware.Robot
-import org.firstinspires.ftc.teamcode.hardware.subsystemsNew.TransferNew
+import org.firstinspires.ftc.teamcode.hardware.subsystem.Transfer
 
 class ReverseTransfer : CommandTemplate() {
-	override fun initialize() { Robot.Subsystems.transfer.power = TransferNew.POWER_REVERSE }
+	override fun initialize() { Robot.Subsystems.transfer.power = Transfer.REVERSE_POWER }
 
 	override fun execute() {  }
 

@@ -1,8 +1,7 @@
-package org.firstinspires.ftc.teamcode.command.Transfer
+package org.firstinspires.ftc.teamcode.command.transfer
 
 import org.firstinspires.ftc.teamcode.command.CommandTemplate
 import org.firstinspires.ftc.teamcode.hardware.Robot
-import org.firstinspires.ftc.teamcode.hardware.subsystemsNew.TransferNew
 
 class StopTransfer : CommandTemplate() {
 	override fun initialize() { Robot.Subsystems.transfer.power = 0.0 }

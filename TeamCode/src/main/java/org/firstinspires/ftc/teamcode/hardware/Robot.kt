@@ -13,9 +13,9 @@ import com.qualcomm.robotcore.hardware.HardwareMap
 import com.qualcomm.robotcore.hardware.VoltageSensor
 import com.qualcomm.robotcore.util.ElapsedTime
 import org.firstinspires.ftc.robotcore.external.Telemetry
-import org.firstinspires.ftc.teamcode.hardware.subsystemsNew.IntakeNew
-import org.firstinspires.ftc.teamcode.hardware.subsystemsNew.LauncherNew
-import org.firstinspires.ftc.teamcode.hardware.subsystemsNew.TransferNew
+import org.firstinspires.ftc.teamcode.hardware.subsystem.Intake
+import org.firstinspires.ftc.teamcode.hardware.subsystem.Launcher
+import org.firstinspires.ftc.teamcode.hardware.subsystem.Transfer
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants
 
 object Robot : ISubsystem {
@@ -40,9 +40,9 @@ object Robot : ISubsystem {
 		get() = follower.pose
 
 	object Subsystems {
-		lateinit var intake: IntakeNew
-		lateinit var transfer: TransferNew
-		lateinit var launcher: LauncherNew
+		lateinit var intake: Intake
+		lateinit var transfer: Transfer
+		lateinit var launcher: Launcher
 
 		fun all() = listOf(intake, transfer, launcher)
 	}
@@ -92,9 +92,9 @@ object Robot : ISubsystem {
 
 		follower = Constants.createFollower(hw)
 
-		Subsystems.intake = IntakeNew(Motors.Intake.motor)
-		Subsystems.transfer = TransferNew(Motors.Transfer.motor)
-		Subsystems.launcher = LauncherNew(Motors.Launcher.leftMotor, Motors.Launcher.rightMotor)
+		Subsystems.intake = Intake(Motors.Intake.motor)
+		Subsystems.transfer = Transfer(Motors.Transfer.motor)
+		Subsystems.launcher = Launcher(Motors.Launcher.leftMotor, Motors.Launcher.rightMotor)
 
 		scheduler.registerSubsystem(*Subsystems.all().toTypedArray())
 
