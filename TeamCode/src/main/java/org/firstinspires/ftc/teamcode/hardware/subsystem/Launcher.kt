@@ -4,7 +4,6 @@ import com.qualcomm.robotcore.hardware.DcMotor.RunMode
 import com.qualcomm.robotcore.hardware.DcMotor.ZeroPowerBehavior.FLOAT
 import com.qualcomm.robotcore.hardware.DcMotorEx
 import com.qualcomm.robotcore.hardware.DcMotorSimple.Direction.FORWARD
-import com.qualcomm.robotcore.hardware.DcMotorSimple.Direction.REVERSE
 import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit
 import org.firstinspires.ftc.teamcode.hardware.ISubsystem
 import org.firstinspires.ftc.teamcode.hardware.Robot
@@ -70,8 +69,8 @@ class Launcher(val left: DcMotorEx, val right: DcMotorEx) : ISubsystem {
     }
 
 	companion object {
-		const val MAX_RPM = 0.0
         const val RPM_TO_TPS = (1.0 / 60.0) * (28.0 / 1.0) * (12.0 / 17.0)
+        const val MAX_RPM = 2300.0
 
 		// the maximum amount that the left and right motors can deviate at any given time
 		const val MAXIMUM_DEVIANCE = 0.1 // 10%
