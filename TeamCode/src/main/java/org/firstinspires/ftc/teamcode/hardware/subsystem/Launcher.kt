@@ -4,6 +4,7 @@ import com.qualcomm.robotcore.hardware.DcMotor.RunMode
 import com.qualcomm.robotcore.hardware.DcMotor.ZeroPowerBehavior.FLOAT
 import com.qualcomm.robotcore.hardware.DcMotorEx
 import com.qualcomm.robotcore.hardware.DcMotorSimple.Direction.FORWARD
+import com.qualcomm.robotcore.hardware.DcMotorSimple.Direction.REVERSE
 import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit
 import org.firstinspires.ftc.teamcode.hardware.ISubsystem
 import org.firstinspires.ftc.teamcode.hardware.Robot
@@ -40,8 +41,8 @@ class Launcher(val left: DcMotorEx, val right: DcMotorEx) : ISubsystem {
 	override fun reset() {
 		targetRPM = 0.0
 
-		right.direction = FORWARD
-		left.direction = FORWARD
+		right.direction = REVERSE
+		left.direction = REVERSE
 
 		motors.forEach {
 			it.zeroPowerBehavior = FLOAT
