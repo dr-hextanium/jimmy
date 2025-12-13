@@ -16,6 +16,7 @@ import org.firstinspires.ftc.robotcore.external.Telemetry
 import org.firstinspires.ftc.teamcode.hardware.subsystemsNew.IntakeNew
 import org.firstinspires.ftc.teamcode.hardware.subsystemsNew.LauncherNew
 import org.firstinspires.ftc.teamcode.hardware.subsystemsNew.TransferNew
+import org.firstinspires.ftc.teamcode.pedroPathing.Constants
 
 object Robot : ISubsystem {
 	val scheduler: CommandScheduler
@@ -89,7 +90,7 @@ object Robot : ISubsystem {
 
 		val limelight = hw["limelight"] as Limelight3A
 
-//		follower = Follower(hw, FConstants::class.java, LConstants::class.java)
+		follower = Constants.createFollower(hw)
 
 		Subsystems.intake = IntakeNew(Motors.Intake.motor)
 		Subsystems.transfer = TransferNew(Motors.Transfer.motor)

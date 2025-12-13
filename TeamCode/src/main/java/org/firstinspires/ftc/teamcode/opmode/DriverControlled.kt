@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.programs
+package org.firstinspires.ftc.teamcode.opmode
 
 import com.bylazar.telemetry.PanelsTelemetry
 import dev.frozenmilk.dairy.mercurial.continuations.Continuations.exec
