@@ -28,7 +28,7 @@ class Intake(val motor: DcMotorEx) : ISubsystem {
 	}
 
 	companion object {
-		const val POWER_INTAKE = 1.0
-		const val POWER_REVERSE = -1.0
+		const val POWER_INTAKE = -1.0
+		const val POWER_REVERSE = 1.0
 	}
 }

@@ -1,12 +1,17 @@
 package org.firstinspires.ftc.teamcode.opmode
 
+import com.arcrobotics.ftclib.command.ConditionalCommand
 import com.arcrobotics.ftclib.command.button.GamepadButton
+import com.arcrobotics.ftclib.gamepad.GamepadEx
 import com.arcrobotics.ftclib.gamepad.GamepadKeys
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp
+import org.firstinspires.ftc.teamcode.command.intake.SpinIntake
+import org.firstinspires.ftc.teamcode.command.intake.StopIntake
 import org.firstinspires.ftc.teamcode.command.launcher.Manual
 import org.firstinspires.ftc.teamcode.command.launcher.StopLauncher
 import org.firstinspires.ftc.teamcode.hardware.Robot
 import org.firstinspires.ftc.teamcode.opmode.template.BaseTemplate
+import org.firstinspires.ftc.teamcode.wrapper.GamepadTrigger
 
 @TeleOp
 class FindRPM : BaseTemplate() {
@@ -19,6 +24,14 @@ class FindRPM : BaseTemplate() {
 		GamepadButton(primary, CIRCLE)
 			.whenPressed(
 				StopLauncher()
+			)
+
+		GamepadTrigger(primary, 0.5, GamepadKeys.Trigger.LEFT_TRIGGER)
+			.whenActive(
+				SpinIntake()
+			)
+			.whenInactive(
+				StopIntake()
 			)
 	}
 
