@@ -33,16 +33,16 @@ class Launcher(val left: DcMotorEx, val right: DcMotorEx) : ISubsystem {
 	}
 
     fun setTargetRPMByDistance(distance: Double) {
-        setTargetRPM(distanceToRPM(distance))
+        daddyTargetRPM(distanceToRPM(distance))
     }
 
-	fun setTargetRPM(rpm: Double) { targetRPM = rpm }
+	fun daddyTargetRPM(rpm: Double) { targetRPM = rpm }
 
 	override fun reset() {
 		targetRPM = 0.0
 
 		right.direction = FORWARD
-		left.direction = REVERSE
+		left.direction = FORWARD
 
 		motors.forEach {
 			it.zeroPowerBehavior = FLOAT

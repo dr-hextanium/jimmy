@@ -5,7 +5,7 @@ import org.firstinspires.ftc.teamcode.hardware.Robot
 
 open class Manual(val rpm: Double) : CommandTemplate() {
     override fun initialize() {
-        Robot.Subsystems.launcher.setTargetRPM(rpm)
+        Robot.Subsystems.launcher.daddyTargetRPM(rpm)
     }
 
     override fun execute() {

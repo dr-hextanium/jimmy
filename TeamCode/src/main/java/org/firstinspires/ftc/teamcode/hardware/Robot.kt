@@ -88,7 +88,7 @@ object Robot : ISubsystem {
 			Motors.Launcher.rightMotor = hw[Names.Motors.Launcher.rightMotor] as DcMotorEx
 		}
 
-		val limelight = hw["limelight"] as Limelight3A
+//		val limelight = hw["limelight"] as Limelight3A
 
 		follower = Constants.createFollower(hw)
 
