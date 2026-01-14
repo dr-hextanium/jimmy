@@ -3,7 +3,7 @@ package org.firstinspires.ftc.teamcode.hardware.subsystem
 import com.qualcomm.robotcore.hardware.DcMotor.RunMode
 import com.qualcomm.robotcore.hardware.DcMotor.ZeroPowerBehavior.BRAKE
 import com.qualcomm.robotcore.hardware.DcMotorEx
-import com.qualcomm.robotcore.hardware.DcMotorSimple.Direction.FORWARD
+import com.qualcomm.robotcore.hardware.DcMotorSimple.Direction.REVERSE
 import org.firstinspires.ftc.teamcode.hardware.ISubsystem
 import org.firstinspires.ftc.teamcode.hardware.Robot
 
@@ -11,7 +11,7 @@ class Transfer(val motor: DcMotorEx) : ISubsystem {
 	var power = 0.0
 
 	override fun reset() {
-		motor.direction = FORWARD
+		motor.direction = REVERSE
 		motor.zeroPowerBehavior = BRAKE
 		motor.power = 0.0
 		motor.mode = RunMode.RUN_WITHOUT_ENCODER

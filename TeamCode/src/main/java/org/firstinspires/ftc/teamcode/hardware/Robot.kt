@@ -5,7 +5,8 @@ import com.acmerobotics.dashboard.telemetry.MultipleTelemetry
 import com.arcrobotics.ftclib.command.CommandScheduler
 import com.arcrobotics.ftclib.gamepad.GamepadEx
 import com.pedropathing.follower.Follower
-import com.qualcomm.hardware.limelightvision.Limelight3A
+import com.pedropathing.geometry.Pose
+import com.pedropathing.math.MathFunctions.normalizeAngle
 import com.qualcomm.hardware.lynx.LynxModule
 import com.qualcomm.robotcore.hardware.DcMotorEx
 import com.qualcomm.robotcore.hardware.Gamepad
@@ -17,6 +18,8 @@ import org.firstinspires.ftc.teamcode.hardware.subsystem.Intake
 import org.firstinspires.ftc.teamcode.hardware.subsystem.Launcher
 import org.firstinspires.ftc.teamcode.hardware.subsystem.Transfer
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants
+import kotlin.math.atan2
+
 
 object Robot : ISubsystem {
 	val scheduler: CommandScheduler
@@ -90,7 +93,9 @@ object Robot : ISubsystem {
 
 //		val limelight = hw["limelight"] as Limelight3A
 
-		follower = Constants.createFollower(hw)
+        follower = Constants.createFollower(hw)
+        follower.setStartingPose(Pose(0.0, 0.0, 0.0))
+        follower.update()
 
 		Subsystems.intake = Intake(Motors.Intake.motor)
 		Subsystems.transfer = Transfer(Motors.Transfer.motor)
@@ -124,4 +129,10 @@ object Robot : ISubsystem {
 	override fun write() {
 		Subsystems.all().forEach { it.write() }
 	}
+
+    fun face(targetPose: Pose, robotPose: Pose) {
+        val angleToTargetFromCenter = atan2(targetPose.y - robotPose.y, targetPose.x - robotPose.x)
+        val deltaTheta = normalizeAngle(angleToTargetFromCenter - robotPose.heading)
+
+    }
 }

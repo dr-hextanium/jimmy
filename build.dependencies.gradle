@@ -1,12 +1,9 @@
 repositories {
     mavenCentral()
     google() // Needed for androidx
+    maven { url = "https://repo.dairy.foundation/releases" }
     maven { url = "https://mymaven.bylazar.com/releases" }
-    maven {
-        name "dairyReleases"
-        url "https://repo.dairy.foundation/releases"
-        url = 'https://maven.brott.dev/'
-    }
+    maven { url = 'https://maven.brott.dev/'}
 }
 
 dependencies {
@@ -21,8 +18,9 @@ dependencies {
     implementation 'org.firstinspires.ftc:Vision:11.0.0'
     //noinspection GradleDependency
     implementation 'androidx.appcompat:appcompat:1.2.0'
-    implementation "com.bylazar:fullpanels:1.0.10"
-    implementation 'com.pedropathing:ftc:2.0.4'
+    implementation("com.bylazar.sloth:fullpanels:0.2.4+1.0.12")
+//    implementation "com.bylazar:fullpanels:1.0.10" // i commented this line and uncommented the top
+    implementation 'com.pedropathing:ftc:2.0.5'
     implementation 'com.pedropathing:telemetry:1.0.0'
     implementation 'com.acmerobotics.dashboard:dashboard:0.5.1'
 }

@@ -1,27 +1,32 @@
 package org.firstinspires.ftc.teamcode.opmode.template
 
-import com.acmerobotics.dashboard.FtcDashboard
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry
 import com.arcrobotics.ftclib.gamepad.GamepadKeys
+import com.bylazar.telemetry.PanelsTelemetry
+import com.pedropathing.control.PIDFCoefficients
+import com.pedropathing.control.PIDFController
 import com.qualcomm.robotcore.eventloop.opmode.OpMode
 import org.firstinspires.ftc.teamcode.hardware.Globals
 import org.firstinspires.ftc.teamcode.hardware.Robot
-import org.firstinspires.ftc.teamcode.hardware.Robot.Subsystems
+
 
 abstract class BaseTemplate : OpMode() {
 	val primary by lazy { Robot.gamepad1 }
 	val secondary by lazy { Robot.gamepad2 }
 
-	var last = 0.0
+	var lastTimeStamp = 0.0
+
+    var controller: PIDFController = PIDFController(PIDFCoefficients(0.2, 0.0, 0.0, 0.0))
+    var goalLock: Boolean = false
 
 	private fun logLoopTime() {
 		val now = System.nanoTime().toDouble()
-		telemetry.addData("loop time (hz)", 1e9 / (now - last))
-		last = now
+		telemetry.addData("loop time (hz)", 1e9 / (now - lastTimeStamp))
+		lastTimeStamp = now
 	}
 
 	override fun init() {
-		telemetry = MultipleTelemetry(telemetry, FtcDashboard.getInstance().telemetry)
+        telemetry = MultipleTelemetry(PanelsTelemetry.ftcTelemetry, telemetry)
 		telemetry.msTransmissionInterval = 10
 
 		Robot.init(hardwareMap, telemetry, gamepad1, gamepad2)
@@ -33,7 +38,9 @@ abstract class BaseTemplate : OpMode() {
 
 	override fun start() {
 		if (!Globals.AUTO) {
-			Robot.scheduler.schedule(
+            Robot.follower.startTeleopDrive()
+
+            Robot.scheduler.schedule(
 				// enter starting configuration here
 			)
 		}
@@ -64,12 +71,30 @@ abstract class BaseTemplate : OpMode() {
 
 		Robot.scheduler.run()
 
-		Robot.write()
+        // get the pose to put into this
+//        controller.updateError(Robot.face());
 
-		logLoopTime()
+        val angularAdjustment =
+            if (goalLock) {
+                controller.run()
+            } else {
+                (-gamepad1.right_stick_x).toDouble() * 0.5
+            }
 
-		telemetry.update()
-	}
+        Robot.follower.setTeleOpDrive(
+            (-gamepad1.left_stick_y).toDouble(),
+            (-gamepad1.left_stick_x).toDouble(),
+            angularAdjustment,
+            false
+        )
+
+
+        Robot.write()
+
+        logLoopTime()
+
+        telemetry.update()
+    }
 
 	abstract fun initialize()
 

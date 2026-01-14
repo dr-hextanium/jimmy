@@ -5,10 +5,10 @@ import org.firstinspires.ftc.teamcode.hardware.Robot
 
 class SpinUp(val distance: Double) : CommandTemplate() {
     override fun initialize() {
-        Robot.Subsystems.launcher.setTargetRPMByDistance(distance)
+        Robot.Subsystems.launcher.targetTPSByDistance(distance)
     }
 
     override fun execute() {}
 
-    override fun isFinished() = true
+    override fun isFinished() = Robot.Subsystems.launcher.isReady
 }

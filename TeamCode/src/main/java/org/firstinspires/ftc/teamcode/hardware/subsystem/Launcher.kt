@@ -3,8 +3,8 @@ package org.firstinspires.ftc.teamcode.hardware.subsystem
 import com.qualcomm.robotcore.hardware.DcMotor.RunMode
 import com.qualcomm.robotcore.hardware.DcMotor.ZeroPowerBehavior.FLOAT
 import com.qualcomm.robotcore.hardware.DcMotorEx
-import com.qualcomm.robotcore.hardware.DcMotorSimple.Direction.FORWARD
 import com.qualcomm.robotcore.hardware.DcMotorSimple.Direction.REVERSE
+import com.qualcomm.robotcore.hardware.Gamepad
 import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit
 import org.firstinspires.ftc.teamcode.hardware.ISubsystem
 import org.firstinspires.ftc.teamcode.hardware.Robot
@@ -12,34 +12,47 @@ import org.firstinspires.ftc.teamcode.utility.absPercentDifference
 
 class Launcher(val left: DcMotorEx, val right: DcMotorEx) : ISubsystem {
 	val motors = listOf(left, right)
-	var targetRPM = 0.0
+	var targetTPS = 0.0
 
-	val averageRPM: Double
+	val averageTPS: Double
 		get() = (left.velocity + right.velocity) / 2.0
 
 	val atSpeed: Boolean
-		get() = absPercentDifference(averageRPM, targetRPM) <= AT_SPEED_TOLERANCE
+		get() = absPercentDifference(averageTPS, targetTPS) <= AT_SPEED_TOLERANCE
 
 	val withinSafetyMargins: Boolean
 		get() = absPercentDifference(left.velocity, right.velocity) <= MAXIMUM_DEVIANCE
 
-	val isReady: Boolean
-		get() = atSpeed && withinSafetyMargins
+    val gamepad by lazy { Robot.gamepad1.gamepad }
 
-	// distance: inches
-	fun distanceToRPM(distance: Double): Double {
-		val calculated = (distance * RPM_PER_INCH) + BASE_RPM
-		return calculated.coerceIn(0.0, MAX_RPM)
+	val isReady: Boolean = false
+		get() {
+            val wasReady = field
+            val nowReady = atSpeed && withinSafetyMargins
+
+            when {
+                !wasReady && nowReady -> signalAtSpeed(gamepad)
+                wasReady && !nowReady -> signalWrongSpeed(gamepad)
+            }
+
+            return nowReady
+        }
+
+	fun distanceToTPS(distance: Double): Double {
+		val calculated = (distance * TPS_PER_INCH) + BASE_RPM
+		return calculated.coerceIn(0.0, MAX_TPS)
 	}
 
-    fun setTargetRPMByDistance(distance: Double) {
-        daddyTargetRPM(distanceToRPM(distance))
+    fun targetTPSByDistance(distance: Double) {
+        targetTPS = distanceToTPS(distance)
     }
 
-	fun daddyTargetRPM(rpm: Double) { targetRPM = rpm }
+	fun targetTPSByScalar(scale: Double) {
+        targetTPS = scaleToTPS(scale)
+    }
 
 	override fun reset() {
-		targetRPM = 0.0
+		targetTPS = 0.0
 
 		right.direction = REVERSE
 		left.direction = REVERSE
@@ -64,14 +77,24 @@ class Launcher(val left: DcMotorEx, val right: DcMotorEx) : ISubsystem {
 	}
 
 	override fun write() {
-        if (!atSpeed) {
-            motors.forEach { it.velocity = targetRPM * RPM_TO_TPS }
-        }
+        if (!atSpeed) motors.forEach { it.velocity = targetTPS }
+    }
+    
+    // scale is [0, 1]
+    fun scaleToTPS(scale: Double) = scale * MAX_TPS
+
+    fun signalAtSpeed(gamepad: Gamepad) {
+        gamepad.runLedEffect(AT_SPEED_LED_EFFECT)
+        gamepad.runRumbleEffect(AT_SPEED_RUMBLE_EFFECT)
+    }
+
+    fun signalWrongSpeed(gamepad: Gamepad) {
+        gamepad.runLedEffect(WRONG_SPEED_LED_EFFECT)
+        gamepad.runRumbleEffect(WRONG_SPEED_RUMBLE_EFFECT)
     }
 
 	companion object {
-        const val RPM_TO_TPS = (1.0 / 60.0) * (28.0 / 1.0) * (12.0 / 17.0)
-        const val MAX_RPM = 2300.0
+        const val MAX_TPS = 2300.0
 
 		// the maximum amount that the left and right motors can deviate at any given time
 		const val MAXIMUM_DEVIANCE = 0.1 // 10%
@@ -80,6 +103,35 @@ class Launcher(val left: DcMotorEx, val right: DcMotorEx) : ISubsystem {
 		const val AT_SPEED_TOLERANCE = 0.05 // 5%
 
 		const val BASE_RPM = 0.0
-		const val RPM_PER_INCH = 0.0
+		const val TPS_PER_INCH = 0.0
+
+        val AT_SPEED_LED_EFFECT = Gamepad.LedEffect.Builder()
+            .addStep(0.0, 1.0, 0.0, 100)
+            .addStep(0.0, 0.0, 0.0, 100)
+
+            .addStep(0.0, 1.0, 0.0, 100)
+            .addStep(0.0, 0.0, 0.0, 100)
+
+            .addStep(0.0, 1.0, 0.0, 100)
+            .addStep(0.0, 0.0, 0.0, 100)
+            .addStep(0.0, 1.0, 0.0, 1000)
+            .build()
+
+        val AT_SPEED_RUMBLE_EFFECT = Gamepad.RumbleEffect.Builder()
+            .addStep(1.0, 1.0, 100)
+            .addStep(0.0, 0.0, 100)
+            .addStep(0.75, 0.75, 100)
+            .addStep(0.0, 0.0, 100)
+            .addStep(0.5, 0.5, 100)
+            .addStep(0.0, 0.0, 100)
+            .build()
+
+        val WRONG_SPEED_LED_EFFECT = Gamepad.LedEffect.Builder()
+            .addStep(1.0, 0.0, 0.0, 1300)
+            .build()
+
+        val WRONG_SPEED_RUMBLE_EFFECT = Gamepad.RumbleEffect.Builder()
+            .addStep(1.0, 1.0, 300)
+            .build()
 	}
 }

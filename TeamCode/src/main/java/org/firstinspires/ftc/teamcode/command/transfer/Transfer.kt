@@ -4,8 +4,8 @@ import org.firstinspires.ftc.teamcode.command.CommandTemplate
 import org.firstinspires.ftc.teamcode.hardware.Robot
 import org.firstinspires.ftc.teamcode.hardware.subsystem.Transfer
 
-class KickUp : CommandTemplate() {
-	override fun initialize() { Robot.Subsystems.transfer.power = Transfer.FEED_POWER }
+class Transfer(val power: () -> Double = { Transfer.FEED_POWER }) : CommandTemplate() {
+	override fun initialize() { Robot.Subsystems.transfer.power = power() }
 
 	override fun execute() {  }
 
