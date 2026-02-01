@@ -1,11 +1,11 @@
 package org.firstinspires.ftc.teamcode.opmode.template
 
-import com.acmerobotics.dashboard.telemetry.MultipleTelemetry
 import com.arcrobotics.ftclib.gamepad.GamepadKeys
-import com.bylazar.telemetry.PanelsTelemetry
 import com.pedropathing.control.PIDFCoefficients
 import com.pedropathing.control.PIDFController
+import com.pedropathing.geometry.Pose
 import com.qualcomm.robotcore.eventloop.opmode.OpMode
+import org.firstinspires.ftc.teamcode.command.launcher.Manual
 import org.firstinspires.ftc.teamcode.hardware.Globals
 import org.firstinspires.ftc.teamcode.hardware.Robot
 
@@ -16,7 +16,7 @@ abstract class BaseTemplate : OpMode() {
 
 	var lastTimeStamp = 0.0
 
-    var controller: PIDFController = PIDFController(PIDFCoefficients(0.2, 0.0, 0.0, 0.0))
+    var controller: PIDFController = PIDFController(PIDFCoefficients(0.5, 0.0, 0.0, 0.0))
     var goalLock: Boolean = false
 
 	private fun logLoopTime() {
@@ -26,10 +26,9 @@ abstract class BaseTemplate : OpMode() {
 	}
 
 	override fun init() {
-        telemetry = MultipleTelemetry(PanelsTelemetry.ftcTelemetry, telemetry)
-		telemetry.msTransmissionInterval = 10
+        telemetry.msTransmissionInterval = 10
 
-		Robot.init(hardwareMap, telemetry, gamepad1, gamepad2)
+        Robot.init(hardwareMap, telemetry, gamepad1, gamepad2)
 
 		initialize()
 
@@ -37,12 +36,14 @@ abstract class BaseTemplate : OpMode() {
 	}
 
 	override fun start() {
-		if (!Globals.AUTO) {
-            Robot.follower.startTeleopDrive()
+        resetRuntime()
 
+        if (!Globals.AUTO) {
             Robot.scheduler.schedule(
-				// enter starting configuration here
-			)
+                Manual { 0.71 },
+            )
+
+            Robot.follower.startTeleopDrive()
 		}
 	}
 
@@ -71,20 +72,31 @@ abstract class BaseTemplate : OpMode() {
 
 		Robot.scheduler.run()
 
-        // get the pose to put into this
-//        controller.updateError(Robot.face());
+        val targetPose = Pose(12.0, 138.0)
+        val robotPose = Robot.follower.pose
 
-        val angularAdjustment =
-            if (goalLock) {
-                controller.run()
-            } else {
-                (-gamepad1.right_stick_x).toDouble() * 0.5
-            }
+        // get the pose to put into this
+
+
+
+//        val angleToTargetFromCenter =
+//            atan2(targetPose.y - robotPose.y, targetPose.x - robotPose.x)
+//        val robotAngleDiff: Double =
+//            normalizeAngle(angleToTargetFromCenter - robotPose.heading)
+//
+//        controller.updateError(robotAngleDiff)
+
+//        val angularAdjustment =
+//            if (false) {
+//                controller.run()
+//            } else {
+//                (-gamepad1.right_stick_x).toDouble()
+//            }
 
         Robot.follower.setTeleOpDrive(
             (-gamepad1.left_stick_y).toDouble(),
             (-gamepad1.left_stick_x).toDouble(),
-            angularAdjustment,
+            (-gamepad1.right_stick_x).toDouble(),
             false
         )
 

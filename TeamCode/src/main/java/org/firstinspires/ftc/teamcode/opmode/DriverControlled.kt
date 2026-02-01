@@ -7,11 +7,11 @@ import com.arcrobotics.ftclib.command.button.GamepadButton
 import com.arcrobotics.ftclib.gamepad.GamepadKeys
 import com.pedropathing.geometry.Pose
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp
+import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit
 import org.firstinspires.ftc.teamcode.command.intake.SpinIntake
 import org.firstinspires.ftc.teamcode.command.intake.StopIntake
 import org.firstinspires.ftc.teamcode.command.launcher.Manual
 import org.firstinspires.ftc.teamcode.command.transfer.Transfer
-import org.firstinspires.ftc.teamcode.command.transfer.TransferSequence
 import org.firstinspires.ftc.teamcode.hardware.Globals
 import org.firstinspires.ftc.teamcode.hardware.Robot
 import org.firstinspires.ftc.teamcode.hardware.subsystem.Launcher
@@ -21,6 +21,8 @@ import org.firstinspires.ftc.teamcode.wrapper.GamepadTrigger
 @TeleOp
 class DriverControlled : BaseTemplate() {
     override fun initialize() {
+        Globals.AUTO = false
+
         // --- 1. PRIMARY DRIVER CONTROLS (INTAKE) ---
         GamepadTrigger(primary, 0.3, GamepadKeys.Trigger.RIGHT_TRIGGER)
             .whenActive(ParallelCommandGroup(Transfer(), SpinIntake()))
@@ -36,15 +38,16 @@ class DriverControlled : BaseTemplate() {
             .whenPressed(Transfer { -1.0 })
             .whenReleased(Transfer { 0.0 })
 
-        // --- 3. SHOOTING MACROS ---
-        GamepadButton(primary, GamepadKeys.Button.X)
-            .whenPressed(TransferSequence(Globals.CLOSE_DEPOT))
+//        // --- 3. SHOOTING MACROS ---
+//        GamepadButton(primary, GamepadKeys.Button.X)
+//            .whenPressed(InstantCommand({ Robot.follower.pose = Pose(55.0, 7.5, Robot.pose.heading) }))
 
         GamepadButton(primary, GamepadKeys.Button.Y)
-            .whenPressed(TransferSequence(Globals.CLOSE_APEX))
+            .whenPressed(Manual { 0.71 })
 
         GamepadButton(primary, GamepadKeys.Button.B)
-            .whenPressed(TransferSequence(Globals.FAR))
+            .whenPressed(Manual { 0.93 })
+//            .whenPressed(Manual { 0.875 })
 
         // --- 4. MANUAL OVERRIDES (New) ---
 
@@ -75,15 +78,13 @@ class DriverControlled : BaseTemplate() {
             .whenPressed(InstantCommand({
                 Robot.follower.pose = Pose(Robot.pose.x, Robot.pose.y, 0.0)
             }))
-
-        GamepadButton(primary, GamepadKeys.Button.LEFT_STICK_BUTTON)
-            .whenPressed(InstantCommand({
-                goalLock = !goalLock
-            }))
     }
 
     override fun cycle() {
         // Only show necessary telemetry
+        val hubCurrent = Robot.hubs.sumOf { it.getCurrent(CurrentUnit.AMPS) }
+        println(hubCurrent)
+        Robot.telemetry.addData("hub current", hubCurrent)
         Robot.telemetry.addData("average tps", Robot.Subsystems.launcher.averageTPS)
         Robot.telemetry.addData("shooter ready?", Robot.Subsystems.launcher.isReady)
         Robot.telemetry.addData("heading", Math.toDegrees(Robot.follower.heading))

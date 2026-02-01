@@ -17,8 +17,8 @@ class Launcher(val left: DcMotorEx, val right: DcMotorEx) : ISubsystem {
     // The "Final" target the user wants
     var targetTPS = 0.0
 
-    // The "Intermediate" target we send to the motor to ramp up slowly
-    private var currentRampedTPS = 0.0
+    // The current power
+    private var currentPower = 0.0
 
     val averageTPS: Double
         get() = (abs(left.velocity) + abs(right.velocity)) / 2.0
@@ -58,7 +58,7 @@ class Launcher(val left: DcMotorEx, val right: DcMotorEx) : ISubsystem {
     override fun reset() {
         wasReady = false
         targetTPS = 0.0
-        currentRampedTPS = 0.0 // Reset the ramp logic
+        currentPower = 0.0 // Reset the ramp logic
 
         right.direction = REVERSE
         left.direction = REVERSE
@@ -72,7 +72,7 @@ class Launcher(val left: DcMotorEx, val right: DcMotorEx) : ISubsystem {
 
             // Correct Order: Reset Encoder FIRST, then set RunMode
             it.mode = RunMode.STOP_AND_RESET_ENCODER
-            it.mode = RunMode.RUN_USING_ENCODER
+            it.mode = RunMode.RUN_WITHOUT_ENCODER
         }
     }
 
@@ -81,15 +81,13 @@ class Launcher(val left: DcMotorEx, val right: DcMotorEx) : ISubsystem {
     override fun update() {
         // --- 1. Slew Rate Limiter (The Belt Saver) ---
         // Calculate how far we are from the target
-        val error = targetTPS - currentRampedTPS
+        val error = targetTPS - averageTPS
 
-        // Limit the change per loop to prevent torque spikes
-        // coerceIn ensures we don't jump more than RAMP_RATE in one cycle
-        val step = error.coerceIn(-RAMP_RATE_PER_LOOP, RAMP_RATE_PER_LOOP)
-
-        // Apply the step
-        currentRampedTPS += step
-        // ---------------------------------------------
+        if (error <= 0) {
+            currentPower = 0.0
+        } else {
+            currentPower = 1.0
+        }
 
         // 2. Logic Updates
         val nowReady = isReady
@@ -104,14 +102,14 @@ class Launcher(val left: DcMotorEx, val right: DcMotorEx) : ISubsystem {
         }
 
         Robot.telemetry.addData("Launcher Target TPS", targetTPS)
-        Robot.telemetry.addData("Launcher Ramped TPS", currentRampedTPS)
+        Robot.telemetry.addData("Launcher output power", currentPower)
         Robot.telemetry.addData("Left Vel", left.velocity)
         Robot.telemetry.addData("Right Vel", right.velocity)
     }
 
     override fun write() {
         // CRITICAL: We write the RAMPED value, not the raw target
-        motors.forEach { it.velocity = currentRampedTPS }
+        motors.forEach { it.power = currentPower }
     }
 
     fun scaleToTPS(scale: Double) = scale * MAX_TPS

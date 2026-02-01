@@ -13,8 +13,8 @@ import org.firstinspires.ftc.teamcode.hardware.subsystem.Launcher
 
 class TransferSequence(set: Triple<PowerDelayPair, PowerDelayPair, PowerDelayPair>) : SequentialCommandGroup() {
     // Tuning Constants (in Milliseconds)
-    private val FEED_TIME = 700L     // How long to run rollers to eject ball
-    private val SPIN_UP_TIMEOUT = 3000L // Max time to wait for spinup before firing anyway
+    private val FEED_TIME = 225L     // How long to run rollers to eject ball
+    private val SPIN_UP_TIMEOUT = 2000L // Max time to wait for spinup before firing anyway
     private val RECOVERY_TIMEOUT = 1200L // Max time to wait between shots
 
     init {
@@ -34,7 +34,7 @@ class TransferSequence(set: Triple<PowerDelayPair, PowerDelayPair, PowerDelayPai
             WaitCommand(FEED_TIME), // Ensure ball leaves
 
             // Reset Feeders
-            Transfer { 0.0 },
+            Transfer { -0.5 },
             StopIntake(),
 
             // ==================== SHOT 2 ====================
@@ -53,7 +53,7 @@ class TransferSequence(set: Triple<PowerDelayPair, PowerDelayPair, PowerDelayPai
                 Transfer()
             ),
             WaitCommand(FEED_TIME),
-            Transfer { 0.0 },
+            Transfer { -0.5 },
             StopIntake(),
 
             // ==================== SHOT 3 ====================

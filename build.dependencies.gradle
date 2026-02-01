@@ -20,7 +20,7 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.2.0'
     implementation("com.bylazar.sloth:fullpanels:0.2.4+1.0.12")
 //    implementation "com.bylazar:fullpanels:1.0.10" // i commented this line and uncommented the top
-    implementation 'com.pedropathing:ftc:2.0.5'
+    implementation 'com.pedropathing:ftc:2.0.6'
     implementation 'com.pedropathing:telemetry:1.0.0'
     implementation 'com.acmerobotics.dashboard:dashboard:0.5.1'
 }

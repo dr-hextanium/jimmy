@@ -25,8 +25,15 @@ object Globals {
 
     @JvmField
     val FAR = Triple(
-        PowerDelayPair(0.875, 150L),
-        PowerDelayPair(0.9, 150L),
-        PowerDelayPair(0.885, 1300L),
+        PowerDelayPair(0.885, 2000L),
+        PowerDelayPair(0.865, 2000L),
+        PowerDelayPair(0.865, 2000L),
+    )
+
+    @JvmField
+    val BETTER_FAR = Triple(
+        PowerDelayPair(0.91, 2000L),
+        PowerDelayPair(0.90, 2000L),
+        PowerDelayPair(0.91, 2000L),
     )
 }
