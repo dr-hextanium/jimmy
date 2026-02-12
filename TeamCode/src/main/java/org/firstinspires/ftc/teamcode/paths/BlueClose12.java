@@ -17,7 +17,6 @@ public class BlueClose12 {
     public PathChain IntakeSpike3;
     public PathChain ScoreSpike3Part1;
     public PathChain ScoreSpike3Part2;
-    public PathChain Leave;
 
     public BlueClose12(Follower follower) {
         ScorePreloads = follower.pathBuilder().addPath(
@@ -55,7 +54,7 @@ public class BlueClose12 {
                         new BezierLine(
                                 new Pose(55.000, 88.000),
 
-                                new Pose(55.000, 62.0)
+                                new Pose(55.000, 62.000)
                         )
                 ).setLinearHeadingInterpolation(Math.toRadians(129), Math.toRadians(180))
 
@@ -63,18 +62,18 @@ public class BlueClose12 {
 
         IntakeSpike2 = follower.pathBuilder().addPath(
                         new BezierLine(
-                                new Pose(55.000, 62.0),
+                                new Pose(55.000, 62.000),
 
-                                new Pose(18.000, 62.0)
+                                new Pose(11.000, 61.000)
                         )
                 ).setTangentHeadingInterpolation()
 
                 .build();
 
         ScoreSpike2 = follower.pathBuilder().addPath(
-                        new BezierLine(
-                                new Pose(18.000, 62.0),
-
+                        new BezierCurve(
+                                new Pose(11.000, 61.000),
+                                new Pose(31.000, 52.000),
                                 new Pose(55.000, 88.000)
                         )
                 ).setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(129))
@@ -94,7 +93,7 @@ public class BlueClose12 {
                                 new Pose(55.000, 82.000),
                                 new Pose(67.000, 35.000),
                                 new Pose(44.000, 35.000),
-                                new Pose(18.000, 36.000)
+                                new Pose(11.000, 36.000)
                         )
                 ).setTangentHeadingInterpolation()
 
@@ -102,7 +101,7 @@ public class BlueClose12 {
 
         ScoreSpike3Part1 = follower.pathBuilder().addPath(
                         new BezierLine(
-                                new Pose(18.000, 36.000),
+                                new Pose(11.000, 36.000),
 
                                 new Pose(50.000, 81.000)
                         )
@@ -117,16 +116,6 @@ public class BlueClose12 {
                                 new Pose(55.000, 88.000)
                         )
                 ).setLinearHeadingInterpolation(Math.toRadians(235), Math.toRadians(129))
-
-                .build();
-
-        Leave = follower.pathBuilder().addPath(
-                        new BezierLine(
-                                new Pose(55.000, 88.000),
-
-                                new Pose(45.000, 78.000)
-                        )
-                ).setLinearHeadingInterpolation(Math.toRadians(129), Math.toRadians(0))
 
                 .build();
     }

@@ -11,17 +11,17 @@ import org.firstinspires.ftc.teamcode.command.launcher.Manual
 import org.firstinspires.ftc.teamcode.command.transfer.Transfer
 import org.firstinspires.ftc.teamcode.hardware.Robot
 import org.firstinspires.ftc.teamcode.opmode.template.AutoTemplate
-import org.firstinspires.ftc.teamcode.paths.BlueClose12
+import org.firstinspires.ftc.teamcode.paths.RedFar6Leave
 import kotlin.math.PI
 
-@Autonomous(name = "Blue Close 12")
-class BlueClose12Auto : AutoTemplate(Pose(32.0, 136.5, PI / 2)) {
+@Autonomous(name = "Red Far 6 + Leave")
+class RedFar6LeaveAuto : AutoTemplate(Pose(89.0, 7.5, PI / 2)) {
     val command by lazy {
         SequentialCommandGroup(
             // score preloads
-            Manual { 0.71 },
+            Manual { 0.93 },
             PedroCommand(
-                BlueClose12(follower).ScorePreloads, follower
+                RedFar6Leave(follower).LaunchPreloads, follower
             ),
             WaitCommand(200),
             ParallelCommandGroup(
@@ -33,58 +33,33 @@ class BlueClose12Auto : AutoTemplate(Pose(32.0, 136.5, PI / 2)) {
 
             // score first spike
             PedroCommand(
-                BlueClose12(follower).IntakeSpike1, follower
+                RedFar6Leave(follower).IntakeHumanPlayer, follower
             ),
-            PedroCommand(
-                BlueClose12(follower).ScoreSpike1, follower
-            ),
-            WaitCommand(200),
-            ParallelCommandGroup(
-                Transfer { 1.0 },
-                SpinIntake()
-            ),
-            WaitCommand(1500),
+            WaitCommand(1000),
             Transfer { -1.0 },
 
-            // score second spike
             PedroCommand(
-                BlueClose12(follower).AlignSpike2, follower
+                RedFar6Leave(follower).GoBackToShoot, follower
             ),
-            PedroCommand(
-                BlueClose12(follower).IntakeSpike2, follower
-            ),
-            PedroCommand(
-                BlueClose12(follower).ScoreSpike2, follower
-            ),
-            WaitCommand(200),
-            ParallelCommandGroup(
-                Transfer { 1.0 },
-                SpinIntake()
-            ),
-            WaitCommand(1500),
             Transfer { -1.0 },
 
-            // score third spike
             PedroCommand(
-                BlueClose12(follower).PrepAlignSpike3, follower
+                RedFar6Leave(follower).ShootHumanPlayer, follower
             ),
-            PedroCommand(
-                BlueClose12(follower).IntakeSpike3, follower
-            ),
-            PedroCommand(
-                BlueClose12(follower).ScoreSpike3Part1, follower
-            ),
-            PedroCommand(
-                BlueClose12(follower).ScoreSpike3Part2, follower
-            ),
-            WaitCommand(200),
+            Transfer { -1.0 },
+
+            WaitCommand(1000),
             ParallelCommandGroup(
                 Transfer { 1.0 },
                 SpinIntake()
             ),
-            WaitCommand(1500),
+            WaitCommand(2000),
+
             Transfer { 0.0 },
             Manual { 0.0 },
+            PedroCommand(
+                RedFar6Leave(follower).Leave, follower
+            ),
         )
     }
 

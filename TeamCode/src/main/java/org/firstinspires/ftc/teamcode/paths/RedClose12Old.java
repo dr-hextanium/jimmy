@@ -6,7 +6,7 @@ import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
 import com.pedropathing.paths.PathChain;
 
-public class RedClose12 {
+public class RedClose12Old {
     public PathChain ScorePreloads;
     public PathChain IntakeSpike1;
     public PathChain ScoreSpike1;
@@ -19,7 +19,7 @@ public class RedClose12 {
     public PathChain ScoreSpike3Part2;
     public PathChain Leave;
 
-    public RedClose12(Follower follower) {
+    public RedClose12Old(Follower follower) {
         ScorePreloads = follower.pathBuilder().addPath(
                         new BezierCurve(
                                 new Pose(112.000, 136.500),
@@ -35,7 +35,7 @@ public class RedClose12 {
                         new BezierCurve(
                                 new Pose(89.000, 88.000),
                                 new Pose(89.000, 84.000),
-                                new Pose(130.0, 85.000)
+                                new Pose(126.000, 84.000)
                         )
                 ).setConstantHeadingInterpolation(Math.toRadians(0))
 
@@ -43,7 +43,7 @@ public class RedClose12 {
 
         ScoreSpike1 = follower.pathBuilder().addPath(
                         new BezierCurve(
-                                new Pose(130.0, 85.000),
+                                new Pose(126.000, 84.000),
                                 new Pose(89.000, 84.000),
                                 new Pose(89.000, 88.000)
                         )
@@ -55,7 +55,7 @@ public class RedClose12 {
                         new BezierLine(
                                 new Pose(89.000, 88.000),
 
-                                new Pose(89.000, 63.000)
+                                new Pose(89.000, 62.000)
                         )
                 ).setLinearHeadingInterpolation(Math.toRadians(51), Math.toRadians(0))
 
@@ -63,9 +63,9 @@ public class RedClose12 {
 
         IntakeSpike2 = follower.pathBuilder().addPath(
                         new BezierLine(
-                                new Pose(89.000, 63.000),
+                                new Pose(89.000, 62.000),
 
-                                new Pose(136.50, 63.000)
+                                new Pose(136.00, 61.000)
                         )
                 ).setTangentHeadingInterpolation()
 
@@ -73,7 +73,7 @@ public class RedClose12 {
 
         ScoreSpike2 = follower.pathBuilder().addPath(
                         new BezierCurve(
-                                new Pose(136.50, 63.000),
+                                new Pose(134.000, 61.000),
                                 new Pose(113.000, 52.000),
                                 new Pose(89.000, 88.000)
                         )
@@ -92,9 +92,9 @@ public class RedClose12 {
         IntakeSpike3 = follower.pathBuilder().addPath(
                         new BezierCurve(
                                 new Pose(89.000, 82.000),
-                                new Pose(77.000, 29.000),
+                                new Pose(77.000, 35.000),
                                 new Pose(100.000, 35.000),
-                                new Pose(137.000, 38.000)
+                                new Pose(136.00, 36.000)
                         )
                 ).setTangentHeadingInterpolation()
 
@@ -102,7 +102,7 @@ public class RedClose12 {
 
         ScoreSpike3Part1 = follower.pathBuilder().addPath(
                         new BezierLine(
-                                new Pose(137.000, 38.000),
+                                new Pose(136.00, 36.000),
 
                                 new Pose(94.000, 81.000)
                         )
@@ -131,5 +131,3 @@ public class RedClose12 {
                 .build();
     }
 }
-
-

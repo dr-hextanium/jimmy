@@ -7,21 +7,22 @@ import com.pedropathing.geometry.Pose
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous
 import org.firstinspires.ftc.teamcode.command.auto.PedroCommand
 import org.firstinspires.ftc.teamcode.command.intake.SpinIntake
+import org.firstinspires.ftc.teamcode.command.intake.StopIntake
 import org.firstinspires.ftc.teamcode.command.launcher.Manual
 import org.firstinspires.ftc.teamcode.command.transfer.Transfer
 import org.firstinspires.ftc.teamcode.hardware.Robot
 import org.firstinspires.ftc.teamcode.opmode.template.AutoTemplate
-import org.firstinspires.ftc.teamcode.paths.BlueClose12
+import org.firstinspires.ftc.teamcode.paths.RedClose9Gate
 import kotlin.math.PI
 
-@Autonomous(name = "Blue Close 12")
-class BlueClose12Auto : AutoTemplate(Pose(32.0, 136.5, PI / 2)) {
+@Autonomous(name = "Red Close 9 + Open Gate")
+class RedClose9GateAuto : AutoTemplate(Pose(112.0, 136.5, PI / 2)) {
     val command by lazy {
         SequentialCommandGroup(
             // score preloads
             Manual { 0.71 },
             PedroCommand(
-                BlueClose12(follower).ScorePreloads, follower
+                RedClose9Gate(follower).ScorePreloads, follower
             ),
             WaitCommand(200),
             ParallelCommandGroup(
@@ -33,10 +34,13 @@ class BlueClose12Auto : AutoTemplate(Pose(32.0, 136.5, PI / 2)) {
 
             // score first spike
             PedroCommand(
-                BlueClose12(follower).IntakeSpike1, follower
+                RedClose9Gate(follower).IntakeSpike1, follower
             ),
             PedroCommand(
-                BlueClose12(follower).ScoreSpike1, follower
+                RedClose9Gate(follower).OpenGate, follower
+            ),
+            PedroCommand(
+                RedClose9Gate(follower).ScoreSpike1, follower
             ),
             WaitCommand(200),
             ParallelCommandGroup(
@@ -48,13 +52,13 @@ class BlueClose12Auto : AutoTemplate(Pose(32.0, 136.5, PI / 2)) {
 
             // score second spike
             PedroCommand(
-                BlueClose12(follower).AlignSpike2, follower
+                RedClose9Gate(follower).AlignSpike2, follower
             ),
             PedroCommand(
-                BlueClose12(follower).IntakeSpike2, follower
+                RedClose9Gate(follower).IntakeSpike2, follower
             ),
             PedroCommand(
-                BlueClose12(follower).ScoreSpike2, follower
+                RedClose9Gate(follower).ScoreSpike2, follower
             ),
             WaitCommand(200),
             ParallelCommandGroup(
@@ -62,29 +66,13 @@ class BlueClose12Auto : AutoTemplate(Pose(32.0, 136.5, PI / 2)) {
                 SpinIntake()
             ),
             WaitCommand(1500),
-            Transfer { -1.0 },
-
-            // score third spike
-            PedroCommand(
-                BlueClose12(follower).PrepAlignSpike3, follower
-            ),
-            PedroCommand(
-                BlueClose12(follower).IntakeSpike3, follower
-            ),
-            PedroCommand(
-                BlueClose12(follower).ScoreSpike3Part1, follower
-            ),
-            PedroCommand(
-                BlueClose12(follower).ScoreSpike3Part2, follower
-            ),
-            WaitCommand(200),
-            ParallelCommandGroup(
-                Transfer { 1.0 },
-                SpinIntake()
-            ),
+            StopIntake(),
             WaitCommand(1500),
             Transfer { 0.0 },
             Manual { 0.0 },
+            PedroCommand(
+                RedClose9Gate(follower).Leave, follower
+            ),
         )
     }
 
