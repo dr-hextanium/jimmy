@@ -6,19 +6,18 @@ import com.arcrobotics.ftclib.command.CommandScheduler
 import com.arcrobotics.ftclib.gamepad.GamepadEx
 import com.pedropathing.follower.Follower
 import com.pedropathing.geometry.Pose
-import com.pedropathing.math.MathFunctions.normalizeAngle
 import com.qualcomm.hardware.lynx.LynxModule
 import com.qualcomm.robotcore.hardware.DcMotorEx
 import com.qualcomm.robotcore.hardware.Gamepad
 import com.qualcomm.robotcore.hardware.HardwareMap
+import com.qualcomm.robotcore.hardware.Servo
 import com.qualcomm.robotcore.hardware.VoltageSensor
 import com.qualcomm.robotcore.util.ElapsedTime
 import org.firstinspires.ftc.robotcore.external.Telemetry
 import org.firstinspires.ftc.teamcode.hardware.subsystem.Intake
 import org.firstinspires.ftc.teamcode.hardware.subsystem.Launcher
-import org.firstinspires.ftc.teamcode.hardware.subsystem.Transfer
+import org.firstinspires.ftc.teamcode.hardware.subsystem.Turret
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants
-import kotlin.math.atan2
 
 
 object Robot : ISubsystem {
@@ -44,16 +43,16 @@ object Robot : ISubsystem {
 
 	object Subsystems {
 		lateinit var intake: Intake
-		lateinit var transfer: Transfer
+		lateinit var turret: Turret
 		lateinit var launcher: Launcher
 
-		fun all() = listOf(intake, transfer, launcher)
+		fun all() = listOf(intake, turret, launcher)
 	}
 
 	object Motors {
 		object Intake { lateinit var motor: DcMotorEx }
 
-		object Transfer { lateinit var motor: DcMotorEx }
+		object Turret { lateinit var motor: DcMotorEx }
 
 		object Launcher {
 			lateinit var leftMotor: DcMotorEx
@@ -62,18 +61,30 @@ object Robot : ISubsystem {
 
 		fun all() = listOf(
 			Intake.motor,
-			Transfer.motor,
+			Turret.motor,
 			Launcher.rightMotor,
 			Launcher.leftMotor
 		)
 	}
 
+    object Servos {
+        object Intake { lateinit var gate: Servo }
+
+        object Launcher {
+            lateinit var hood: Servo
+        }
+
+        fun all() = listOf(
+            Servos.Intake.gate,
+            Servos.Launcher.hood
+        )
+    }
+
 	fun init(hw: HardwareMap, telemetry: Telemetry, gamepad1: Gamepad, gamepad2: Gamepad) {
 		Robot.telemetry = MultipleTelemetry(FtcDashboard.getInstance().telemetry, telemetry)
 		Robot.hw = hw
 
-		Robot.telemetry.msTransmissionInterval = 11
-
+		Robot.telemetry.msTransmissionInterval = 10
 
 		hubs = hw.getAll(LynxModule::class.java)
 		hubs.forEach { it.bulkCachingMode = LynxModule.BulkCachingMode.MANUAL }
@@ -86,9 +97,12 @@ object Robot : ISubsystem {
 
 		run {
 			Motors.Intake.motor = hw[Names.Motors.Intake.motor] as DcMotorEx
-			Motors.Transfer.motor = hw[Names.Motors.Transfer.motor] as DcMotorEx
+			Motors.Turret.motor = hw[Names.Motors.Turret.motor] as DcMotorEx
 			Motors.Launcher.leftMotor = hw[Names.Motors.Launcher.leftMotor] as DcMotorEx
 			Motors.Launcher.rightMotor = hw[Names.Motors.Launcher.rightMotor] as DcMotorEx
+
+            Servos.Intake.gate = hw[Names.Servos.Intake.servo] as Servo
+            Servos.Launcher.hood = hw[Names.Servos.Launcher.servo] as Servo
 		}
 
 //		val limelight = hw["limelight"] as Limelight3A
@@ -97,9 +111,9 @@ object Robot : ISubsystem {
         follower.setStartingPose(Pose(0.0, 0.0, 0.0))
         follower.update()
 
-		Subsystems.intake = Intake(Motors.Intake.motor)
-		Subsystems.transfer = Transfer(Motors.Transfer.motor)
-		Subsystems.launcher = Launcher(Motors.Launcher.leftMotor, Motors.Launcher.rightMotor)
+		Subsystems.intake = Intake(Motors.Intake.motor, Servos.Intake.gate)
+		Subsystems.turret = Turret(Motors.Turret.motor)
+		Subsystems.launcher = Launcher(Motors.Launcher.leftMotor, Motors.Launcher.rightMotor, Servos.Launcher.hood)
 
 		scheduler.registerSubsystem(*Subsystems.all().toTypedArray())
 
@@ -129,10 +143,4 @@ object Robot : ISubsystem {
 	override fun write() {
 		Subsystems.all().forEach { it.write() }
 	}
-
-    fun face(targetPose: Pose, robotPose: Pose) {
-        val angleToTargetFromCenter = atan2(targetPose.y - robotPose.y, targetPose.x - robotPose.x)
-        val deltaTheta = normalizeAngle(angleToTargetFromCenter - robotPose.heading)
-
-    }
 }

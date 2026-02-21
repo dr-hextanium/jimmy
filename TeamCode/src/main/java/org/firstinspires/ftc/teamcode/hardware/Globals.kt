@@ -1,8 +1,8 @@
 package org.firstinspires.ftc.teamcode.hardware
 
 import com.bylazar.configurables.annotations.Configurable
-
-data class PowerDelayPair(val power: Double, val delay: Long)
+import com.pedropathing.geometry.Pose
+import com.pedropathing.math.Vector
 
 @Configurable
 object Globals {
@@ -10,30 +10,20 @@ object Globals {
 	var AUTO = false
 
     @JvmField
-    val CLOSE_DEPOT = Triple(
-        PowerDelayPair(0.875, 150L),
-        PowerDelayPair(0.9, 150L),
-        PowerDelayPair(0.885, 50L),
-    )
+    var AUTO_RECOVERY_POSITION: Pose? = null
 
     @JvmField
-    val CLOSE_APEX = Triple(
-        PowerDelayPair(0.71, 150L),
-        PowerDelayPair(0.71, 150L),
-        PowerDelayPair(0.71, 1300L),
-    )
+    var isRed: Boolean? = null
 
     @JvmField
-    val FAR = Triple(
-        PowerDelayPair(0.885, 2000L),
-        PowerDelayPair(0.865, 2000L),
-        PowerDelayPair(0.865, 2000L),
-    )
+    val RED_GOAL_POSE = Vector(144.0, 144.0)
 
     @JvmField
-    val BETTER_FAR = Triple(
-        PowerDelayPair(0.91, 2000L),
-        PowerDelayPair(0.90, 2000L),
-        PowerDelayPair(0.91, 2000L),
-    )
+    val BLUE_GOAL_POSE = Vector(0.0, 144.0)
+
+    @JvmField
+    val RED_RESET_POSE = Vector(136.0, 9.25)
+
+    @JvmField
+    val BLUE_RESET_POSE = Vector(8.0, 9.25)
 }

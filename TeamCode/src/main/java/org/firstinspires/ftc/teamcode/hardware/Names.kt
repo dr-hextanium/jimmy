@@ -6,8 +6,8 @@ object Names {
 			const val motor = "intake"
 		}
 
-		object Transfer {
-			const val motor = "transfer"
+		object Turret {
+			const val motor = "turret"
 		}
 
 		object Launcher {
@@ -15,4 +15,14 @@ object Names {
 			const val rightMotor = "sr"
 		}
 	}
+
+    object Servos {
+        object Intake {
+            const val servo = "gate"
+        }
+
+        object Launcher {
+            const val servo = "hood"
+        }
+    }
 }

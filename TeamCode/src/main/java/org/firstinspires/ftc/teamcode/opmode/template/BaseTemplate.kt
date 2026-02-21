@@ -5,7 +5,7 @@ import com.pedropathing.control.PIDFCoefficients
 import com.pedropathing.control.PIDFController
 import com.pedropathing.geometry.Pose
 import com.qualcomm.robotcore.eventloop.opmode.OpMode
-import org.firstinspires.ftc.teamcode.command.launcher.Manual
+import org.firstinspires.ftc.teamcode.command.launcher.ManuallyLaunch
 import org.firstinspires.ftc.teamcode.hardware.Globals
 import org.firstinspires.ftc.teamcode.hardware.Robot
 
@@ -40,7 +40,7 @@ abstract class BaseTemplate : OpMode() {
 
         if (!Globals.AUTO) {
             Robot.scheduler.schedule(
-                Manual { 0.71 },
+                ManuallyLaunch { 0.71 },
             )
 
             Robot.follower.startTeleopDrive()

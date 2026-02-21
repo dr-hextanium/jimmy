@@ -4,7 +4,7 @@ import org.firstinspires.ftc.teamcode.command.CommandTemplate
 import org.firstinspires.ftc.teamcode.hardware.Robot
 import org.firstinspires.ftc.teamcode.hardware.subsystem.Intake
 
-class SpinIntake : CommandTemplate() {
+class IntakeIn : CommandTemplate() {
 	override fun initialize() {
         Robot.Subsystems.intake.power = Intake.POWER_INTAKE
     }

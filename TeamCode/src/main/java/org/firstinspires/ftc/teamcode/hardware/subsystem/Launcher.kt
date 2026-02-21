@@ -3,54 +3,46 @@ package org.firstinspires.ftc.teamcode.hardware.subsystem
 import com.qualcomm.robotcore.hardware.DcMotor.RunMode
 import com.qualcomm.robotcore.hardware.DcMotor.ZeroPowerBehavior.FLOAT
 import com.qualcomm.robotcore.hardware.DcMotorEx
+import com.qualcomm.robotcore.hardware.DcMotorSimple.Direction.FORWARD
 import com.qualcomm.robotcore.hardware.DcMotorSimple.Direction.REVERSE
 import com.qualcomm.robotcore.hardware.Gamepad
+import com.qualcomm.robotcore.hardware.Servo
 import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit
 import org.firstinspires.ftc.teamcode.hardware.ISubsystem
 import org.firstinspires.ftc.teamcode.hardware.Robot
 import org.firstinspires.ftc.teamcode.utility.absPercentDifference
+import org.firstinspires.ftc.teamcode.utility.percentDifference
 import kotlin.math.abs
 
-class Launcher(val left: DcMotorEx, val right: DcMotorEx) : ISubsystem {
+class Launcher(val left: DcMotorEx, val right: DcMotorEx, val hood: Servo) : ISubsystem {
+    val gamepad by lazy { Robot.gamepad1.gamepad }
+
     val motors = listOf(left, right)
 
-    // The "Final" target the user wants
-    var targetTPS = 0.0
-
-    // The current power
     private var currentPower = 0.0
 
-    val averageTPS: Double
-        get() = (abs(left.velocity) + abs(right.velocity)) / 2.0
+    var targetTPS = 0.0
 
-    private var wasReady = false
+    val averageTPS: Double
+        get() = (abs(right.velocity))
 
     val atSpeed: Boolean
         get() {
-            // Guard: If we aren't trying to spin (or target is very low), we aren't "Ready" to shoot
             if (targetTPS < 100.0) return false
-            // We compare actual velocity against the FINAL target, not the ramped target
             return absPercentDifference(averageTPS, targetTPS) <= AT_SPEED_TOLERANCE
         }
 
-    val withinSafetyMargins: Boolean
-        get() = absPercentDifference(left.velocity, right.velocity) <= MAXIMUM_DEVIANCE
-
-    val gamepad by lazy { Robot.gamepad1.gamepad }
-
+    private var wasReady = false
     val isReady: Boolean
         get() = atSpeed
 
-    fun distanceToTPS(distance: Double): Double {
-        val calculated = (distance * TPS_PER_INCH) + BASE_RPM
-        return calculated.coerceIn(0.0, MAX_TPS)
+    fun scaleToTPS(scale: Double) = scale * MAX_TPS
+
+    fun distanceToScalar(distance: Double): Double {
+        val calculated = (distance * SCALAR_PER_INCH) + BASE_SCALAR
+        return calculated.coerceIn(0.0, 1.0)
     }
 
-    fun targetTPSByDistance(distance: Double) {
-        targetTPS = distanceToTPS(distance)
-    }
-
-    // This API remains exactly the same
     fun targetTPSByScalar(scale: Double) {
         targetTPS = scaleToTPS(scale)
     }
@@ -58,9 +50,9 @@ class Launcher(val left: DcMotorEx, val right: DcMotorEx) : ISubsystem {
     override fun reset() {
         wasReady = false
         targetTPS = 0.0
-        currentPower = 0.0 // Reset the ramp logic
+        currentPower = 0.0
 
-        right.direction = REVERSE
+        right.direction = FORWARD
         left.direction = REVERSE
 
         motors.forEach {
@@ -70,17 +62,16 @@ class Launcher(val left: DcMotorEx, val right: DcMotorEx) : ISubsystem {
 
             it.setCurrentAlert(15.0, CurrentUnit.AMPS)
 
-            // Correct Order: Reset Encoder FIRST, then set RunMode
             it.mode = RunMode.STOP_AND_RESET_ENCODER
             it.mode = RunMode.RUN_WITHOUT_ENCODER
         }
+
+        hood.position = 0.0
     }
 
     override fun read() {  }
 
     override fun update() {
-        // --- 1. Slew Rate Limiter (The Belt Saver) ---
-        // Calculate how far we are from the target
         val error = targetTPS - averageTPS
 
         if (error <= 0) {
@@ -89,15 +80,14 @@ class Launcher(val left: DcMotorEx, val right: DcMotorEx) : ISubsystem {
             currentPower = 1.0
         }
 
-        // 2. Logic Updates
         val nowReady = isReady
 
         if (nowReady != wasReady) {
-            if (nowReady) {
-                signalAtSpeed(gamepad)
-            } else {
-                signalWrongSpeed(gamepad)
-            }
+//            if (nowReady) {
+//                signalAtSpeed(gamepad)
+//            } else {
+//                signalWrongSpeed(gamepad)
+//            }
             wasReady = nowReady
         }
 
@@ -108,37 +98,34 @@ class Launcher(val left: DcMotorEx, val right: DcMotorEx) : ISubsystem {
     }
 
     override fun write() {
-        // CRITICAL: We write the RAMPED value, not the raw target
-        motors.forEach { it.power = currentPower }
+        motors.forEach {
+            if (percentDifference(it.power, currentPower) > 0.005) {
+                it.power = currentPower
+            }
+        }
     }
 
-    fun scaleToTPS(scale: Double) = scale * MAX_TPS
-
-    fun signalAtSpeed(gamepad: Gamepad) {
-        gamepad.runLedEffect(AT_SPEED_LED_EFFECT)
-        gamepad.runRumbleEffect(AT_SPEED_RUMBLE_EFFECT)
-    }
-
-    fun signalWrongSpeed(gamepad: Gamepad) {
-        gamepad.runLedEffect(WRONG_SPEED_LED_EFFECT)
-        gamepad.runRumbleEffect(WRONG_SPEED_RUMBLE_EFFECT)
-    }
 
     companion object {
         const val MAX_TPS = 2100.0
         const val IDLE_TPS = 1000.0
 
-        // SAFETY TUNING
-        // If belts still skip, LOWER this number (e.g. to 40.0).
-        // If it speeds up too slowly, INCREASE this number (e.g. to 100.0).
-        // 60.0 adds ~3000 TPS per second (assuming 50Hz loop), taking ~0.7s to reach max speed.
-        const val RAMP_RATE_PER_LOOP = 1000.0
-
-        const val MAXIMUM_DEVIANCE = 0.1
         const val AT_SPEED_TOLERANCE = 0.05 // 5% tolerance
 
-        const val BASE_RPM = 0.0
-        const val TPS_PER_INCH = 0.0
+        const val BASE_SCALAR = 0.0
+        const val SCALAR_PER_INCH = 0.0
+    }
+
+    object Effects {
+        fun signalAtSpeed(gamepad: Gamepad) {
+            gamepad.runLedEffect(AT_SPEED_LED_EFFECT)
+            gamepad.runRumbleEffect(AT_SPEED_RUMBLE_EFFECT)
+        }
+
+        fun signalWrongSpeed(gamepad: Gamepad) {
+            gamepad.runLedEffect(WRONG_SPEED_LED_EFFECT)
+            gamepad.runRumbleEffect(WRONG_SPEED_RUMBLE_EFFECT)
+        }
 
         val AT_SPEED_LED_EFFECT = Gamepad.LedEffect.Builder()
             .addStep(0.0, 1.0, 0.0, 100)
