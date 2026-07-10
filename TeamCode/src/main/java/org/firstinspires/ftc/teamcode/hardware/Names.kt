@@ -33,4 +33,11 @@ object Names {
             const val topBeamBreak = "tbb"
         }
     }
+
+    object AnalogDevices {
+        object Turret {
+            const val encoder12Tooth = "te12"
+            const val encoder13Tooth = "te13"
+        }
+    }
 }

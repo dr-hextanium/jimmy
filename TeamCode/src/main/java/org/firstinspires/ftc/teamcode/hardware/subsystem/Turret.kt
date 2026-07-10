@@ -2,6 +2,7 @@ package org.firstinspires.ftc.teamcode.hardware.subsystem
 
 import com.pedropathing.geometry.Pose
 import com.pedropathing.math.Vector
+import com.qualcomm.robotcore.hardware.AnalogInput
 import com.qualcomm.robotcore.hardware.DcMotor
 import com.qualcomm.robotcore.hardware.DcMotorEx
 import com.qualcomm.robotcore.hardware.DcMotorSimple
@@ -11,13 +12,25 @@ import org.firstinspires.ftc.teamcode.hardware.Robot
 import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.hypot
+import kotlin.math.round
 import kotlin.math.sign
 
-class Turret(val motor: DcMotorEx) : ISubsystem {
+/**
+ * Turret position comes from two absolute analog encoders meshed onto the 137t turret
+ * gear via 12t and 13t idler gears (sensing only -- neither idler drives the turret).
+ * A single one of these aliases every ~31.5 degrees of turret rotation, so [fuseAbsoluteAngle]
+ * combines both (a vernier/nonius decode exploiting that 12 and 13 are coprime) to recover
+ * one unambiguous absolute angle. See that function for the derivation.
+ */
+class Turret(val motor: DcMotorEx, val encoder12: AnalogInput, val encoder13: AnalogInput) : ISubsystem {
     private var currentAngle: Double = 0.0
     private var targetAngle: Double = 0.0
     private var motorPower: Double = 0.0
     private var lastWritePower: Double = 0.0
+
+    // Motor's own relative encoder isn't used for position (the absolute encoders are the
+    // source of truth), kept only as a diagnostic cross-check against the fused angle.
+    private var motorImpliedAngle: Double = 0.0
 
     var aimAtGoal = false
     var offset = 0.0
@@ -39,8 +52,12 @@ class Turret(val motor: DcMotorEx) : ISubsystem {
     }
 
     override fun read() {
-        val currentTicks = motor.currentPosition
-        currentAngle = (currentTicks / TICKS_PER_TURRET_REV) * 360.0
+        motorImpliedAngle = (motor.currentPosition / TICKS_PER_TURRET_REV) * 360.0
+
+        val encoder12Deg = wrapTo360(voltageToDegrees(encoder12.voltage) - ENCODER_12T_ZERO_OFFSET_DEG)
+        val encoder13Deg = wrapTo360(voltageToDegrees(encoder13.voltage) - ENCODER_13T_ZERO_OFFSET_DEG)
+
+        currentAngle = fuseAbsoluteAngle(encoder12Deg, encoder13Deg)
     }
 
     override fun update() {
@@ -135,11 +152,56 @@ class Turret(val motor: DcMotorEx) : ISubsystem {
         return angle
     }
 
+    private fun wrapTo360(degrees: Double): Double {
+        var angle = degrees % 360.0
+        if (angle < 0) angle += 360.0
+        return angle
+    }
+
+    private fun voltageToDegrees(voltage: Double): Double = (voltage / ENCODER_MAX_VOLTAGE) * 360.0
+
+    /**
+     * Vernier/nonius decode: the 12t and 13t idler encoders each alias many times per turret
+     * revolution (137/12 =~ 11.42 and 137/13 =~ 10.54 idler revs per turret rev), but since
+     * 12 and 13 are coprime, their phase *difference* only completes one cycle every
+     * 360 / (ENCODER_12T_GEAR_RATIO - ENCODER_13T_GEAR_RATIO) =~ 410 degrees of turret
+     * rotation -- comfortably covering MIN_ANGLE..MAX_ANGLE. That difference gives a coarse,
+     * unambiguous angle; we then pick the matching revolution of the (higher-resolution) 12t
+     * encoder and solve for the precise angle from it directly.
+     *
+     * NOT YET VALIDATED ON HARDWARE: gear-mesh direction (sign of the ratios below) and the
+     * ENCODER_12T_ZERO_OFFSET_DEG/ENCODER_13T_ZERO_OFFSET_DEG calibration constants need to be
+     * confirmed/tuned on the real turret before trusting this for motion.
+     */
+    private fun fuseAbsoluteAngle(encoder12Deg: Double, encoder13Deg: Double): Double {
+        val phaseDiff = normalizeAngle(encoder12Deg - encoder13Deg)
+        val coarseAngle = phaseDiff / (ENCODER_12T_GEAR_RATIO - ENCODER_13T_GEAR_RATIO)
+
+        val nearestRevolution = round(((coarseAngle * ENCODER_12T_GEAR_RATIO) - encoder12Deg) / 360.0)
+
+        return (encoder12Deg + 360.0 * nearestRevolution) / ENCODER_12T_GEAR_RATIO
+    }
+
     companion object {
-        private const val MOTOR_TICKS_PER_REV = 384.5
-        private const val TURRET_GEAR_RATIO = 135.0 / 24.0
+        // goBILDA 1150 RPM (5.2:1) Yellow Jacket motor: 145.1 encoder ticks per output-shaft rev.
+        private const val MOTOR_TICKS_PER_REV = 145.1
+
+        // 137t turret gear driven by a 15t motor pinion.
+        private const val TURRET_GEAR_RATIO = 137.0 / 15.0
         private const val TICKS_PER_TURRET_REV = MOTOR_TICKS_PER_REV * TURRET_GEAR_RATIO
-        private const val TICKS_PER_DEGREE = TICKS_PER_TURRET_REV / 360.0 // 6 ticks / deg
+        private const val TICKS_PER_DEGREE = TICKS_PER_TURRET_REV / 360.0
+
+        // Absolute analog position encoders (Melonbotics, 0-3.3V per revolution).
+        const val ENCODER_MAX_VOLTAGE = 3.3
+
+        private const val ENCODER_12T_GEAR_RATIO = 137.0 / 12.0 // idler revs per turret rev
+        private const val ENCODER_13T_GEAR_RATIO = 137.0 / 13.0
+
+        // Raw encoder angle (deg) when the turret sits at its true zero position. Must be
+        // calibrated on-robot: home the turret, read the raw encoder voltages, convert with
+        // voltageToDegrees(), and set these to the results.
+        var ENCODER_12T_ZERO_OFFSET_DEG = 0.0
+        var ENCODER_13T_ZERO_OFFSET_DEG = 0.0
 
         var SHOOT_SPEED = 180.0
 
