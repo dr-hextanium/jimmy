@@ -28,7 +28,7 @@ class Launcher(val left: DcMotorEx, val right: DcMotorEx, val hood: Servo) : ISu
     var targetHoodPosition = 0.0
 
     val averageTPS: Double
-        get() = (abs(right.velocity))
+        get() = (abs(left.velocity) + abs(right.velocity)) / 2.0
 
     val atSpeed: Boolean
         get() {
@@ -101,8 +101,8 @@ class Launcher(val left: DcMotorEx, val right: DcMotorEx, val hood: Servo) : ISu
 
         Robot.telemetry.addData("Launcher Target TPS", targetTPS)
         Robot.telemetry.addData("Launcher output power", currentPower)
-        Robot.telemetry.addData("Left Vel", right.velocity)
-//        Robot.telemetry.addData("Right Vel", right.velocity)
+        Robot.telemetry.addData("Left Vel", left.velocity)
+        Robot.telemetry.addData("Right Vel", right.velocity)
     }
 
     override fun write() {
@@ -117,20 +117,6 @@ class Launcher(val left: DcMotorEx, val right: DcMotorEx, val hood: Servo) : ISu
     }
 
     object Regressions {
-//        val POWER_LOWER_BOUND = 0.63
-//        val POWER_UPPER_BOUND = 0.78
-
-//        fun powerRegression(distance: Double): Double {
-//            val a = -(2.13096e-7)
-//            val b = 0.0000882897
-//            val c = -0.00780014
-//            val d = 0.840216
-//
-//            val output = (a * distance.pow(3)) + (b * distance.pow(2)) + (c * distance) + d
-//
-//            return output.coerceIn(POWER_LOWER_BOUND, POWER_UPPER_BOUND)
-//        }
-
         val POWER_LOWER_BOUND = 0.53
         val POWER_UPPER_BOUND = 0.72
 
@@ -164,20 +150,6 @@ class Launcher(val left: DcMotorEx, val right: DcMotorEx, val hood: Servo) : ISu
 
             return output.coerceIn(HOOD_LOWER_BOUND, HOOD_UPPER_BOUND)
         }
-
-//        val HOOD_LOWER_BOUND = 0.22
-//        val HOOD_UPPER_BOUND = 0.95
-//
-//        fun hoodRegression(distance: Double): Double {
-//            val a = -0.00000481859
-//            val b = 0.00109986
-//            val c = -0.0799973
-//            val d = 2.20371
-//
-//            val output = (a * distance.pow(3)) + (b * distance.pow(2)) + (c * distance) + d
-//
-//            return output.coerceIn(HOOD_LOWER_BOUND, HOOD_UPPER_BOUND)
-//        }
     }
 
     object LookupTables {
@@ -226,6 +198,18 @@ class Launcher(val left: DcMotorEx, val right: DcMotorEx, val hood: Servo) : ISu
 
         const val BASE_SCALAR = 0.0
         const val SCALAR_PER_INCH = 0.0
+
+        // Flywheel: single 72mm-diameter wheel, driven 1:1 by the two motors above.
+        const val FLYWHEEL_DIAMETER_MM = 72.0
+
+        // Counter rollers (28mm diameter) are mechanically linked to, and spin reversed
+        // relative to, the flywheel shaft via a 40t -> 20t 2:1 speedup. They're not
+        // independently driven or controlled -- reference only, no active control logic.
+        const val COUNTER_ROLLER_DIAMETER_MM = 28.0
+        const val COUNTER_ROLLER_GEAR_RATIO = 2.0 // 40t -> 20t speedup, reversed direction
+
+        // Hood servo gear ratio -- placeholder, exact tooth count TBD (24t to unknown).
+        const val HOOD_GEAR_RATIO = 4.0
     }
 
     object Effects {

@@ -5,19 +5,19 @@ import com.arcrobotics.ftclib.command.SequentialCommandGroup
 import com.arcrobotics.ftclib.command.button.GamepadButton
 import com.arcrobotics.ftclib.gamepad.GamepadKeys
 import com.pedropathing.geometry.Pose
-import com.pedropathing.math.Vector
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp
 import org.firstinspires.ftc.teamcode.command.intake.CloseGate
 import org.firstinspires.ftc.teamcode.command.intake.IntakeIn
 import org.firstinspires.ftc.teamcode.command.intake.IntakeOut
 import org.firstinspires.ftc.teamcode.command.intake.OpenGate
 import org.firstinspires.ftc.teamcode.command.intake.StopIntake
+import org.firstinspires.ftc.teamcode.command.launcher.ManualHood
+import org.firstinspires.ftc.teamcode.command.launcher.ManuallyLaunch
 import org.firstinspires.ftc.teamcode.command.turret.AimAtGoal
 import org.firstinspires.ftc.teamcode.command.turret.PointTowards
 import org.firstinspires.ftc.teamcode.command.turret.StopAimingAtGoal
 import org.firstinspires.ftc.teamcode.hardware.Globals
 import org.firstinspires.ftc.teamcode.hardware.Robot
-import org.firstinspires.ftc.teamcode.hardware.Robot.Subsystems.launcher
 import org.firstinspires.ftc.teamcode.hardware.Zones
 import org.firstinspires.ftc.teamcode.opmode.template.BaseTemplate
 import org.firstinspires.ftc.teamcode.wrapper.GamepadTrigger
@@ -42,10 +42,6 @@ open class DriverControlled(val isRed: Boolean, initialHeading: Double) : BaseTe
     var goalPose = if (Globals.isRed ?: true) Globals.RED_GOAL_POSE else Globals.BLUE_GOAL_POSE
     var actualHeadingAtBaseZone = if (Globals.isRed ?: true) 0.0 else PI
 
-    var i = 0
-
-    var shooterEnabled = false
-
     fun distanceToGoal(): Double = hypot(goalPose.xComponent - Robot.follower.pose.x, goalPose.yComponent - Robot.follower.pose.y)
 
     override fun initialize() {
@@ -63,33 +59,6 @@ open class DriverControlled(val isRed: Boolean, initialHeading: Double) : BaseTe
                 } else {
                     Robot.scheduler.schedule(SequentialCommandGroup(StopAimingAtGoal(), PointTowards(0.0)))
                 }
-            }))
-
-        GamepadButton(primary, TRIANGLE)
-            .whenPressed(InstantCommand({
-                shooterEnabled = !shooterEnabled
-            }))
-
-        GamepadButton(primary, CIRCLE)
-            .whenPressed(InstantCommand({
-                val v = Vector(0.0, 0.0)
-
-                val potentialTargets = listOf(
-                    Pair(0.0, 0.0), Pair(0.0, 144.0), Pair(144.0, 0.0), Pair(144.0, 144.0),
-                    Pair(0.0, 0.0), Pair(0.0, -144.0), Pair(-144.0, 0.0), Pair(-144.0, -144.0)
-                )
-
-                if (i >= (potentialTargets.size - 1)) {
-                    i = 0
-                } else {
-                    i++
-                }
-
-                val pair = potentialTargets[i]
-
-                v.setOrthogonalComponents(pair.first, pair.second)
-
-                setTargetPose(v)
             }))
 
         GamepadTrigger(primary, 0.3, GamepadKeys.Trigger.LEFT_TRIGGER)
@@ -127,48 +96,30 @@ open class DriverControlled(val isRed: Boolean, initialHeading: Double) : BaseTe
     }
 
     override fun cycle() {
-//        setTargetPose(goalPose)
-
-        launcherPower += when {
+        val launcherPowerChange = when {
             gamepad2.dpad_right -> launcherIncrement
             gamepad2.dpad_left -> -launcherIncrement
             else -> 0.0
         }
 
-        hoodPosition += when {
+        val hoodPositionChange = when {
             gamepad2.dpad_up -> servoIncrement
             gamepad2.dpad_down -> -servoIncrement
             else -> 0.0
         }
 
-        // launcher.distanceToScalar((Vector(Robot.pose) - goalPose).magnitude)
+        // Only (re)schedule when the driver actually changes something -- these are
+        // "instant" commands (all work happens in initialize()), so scheduling them every
+        // loop regardless of change would just be needless churn through the scheduler.
+        if (launcherPowerChange != 0.0) {
+            launcherPower = (launcherPower + launcherPowerChange).coerceIn(-1.0, 1.0)
+            Robot.scheduler.schedule(ManuallyLaunch { launcherPower })
+        }
 
-        // 1.0, 0.225
-        //
-        // 130.0 0.89 0.185 119 deg
-        // 122.2 0.82 0.03 122 deg
-
-        launcherPower = launcherPower.coerceIn(-1.0, 1.0)
-        hoodPosition = hoodPosition.coerceIn(0.0, 1.0)
-
-        launcher.targetTPSByScalar(launcherPower)
-        launcher.targetHoodByScalar(hoodPosition)
-
-//        if (shooterEnabled) {
-//            launcher.targetTPSByScalar(powerRegression(distanceToGoal()))
-//        } else {
-//            launcher.targetTPSByScalar(0.0)
-//        }
-//
-//        launcher.targetHoodByScalar(hoodRegression(distanceToGoal()))
-
-//        launcher.targetTPSByScalar(Launcher.LookupTables.powerInterpLUT[distanceToGoal()])
-//        launcher.targetTPSByScalar(Launcher.LookupTables.powerInterpLUT[distanceToGoal()])
-
-//        launcher.targetTPSByScalar(0.0)
-//        launcher.targetHoodByScalar(Launcher.LookupTables.hoodInterpLUT[distanceToGoal()])
-
-//        launcher.currentPower = launcherPower
+        if (hoodPositionChange != 0.0) {
+            hoodPosition = (hoodPosition + hoodPositionChange).coerceIn(0.0, 1.0)
+            Robot.scheduler.schedule(ManualHood { hoodPosition })
+        }
 
         Robot.telemetry.addData("robot pose", Robot.follower.pose.let { "x: ${it.x}, y: ${it.y}, h: ${Math.toDegrees(it.heading).roundToInt()}" })
 
@@ -177,21 +128,9 @@ open class DriverControlled(val isRed: Boolean, initialHeading: Double) : BaseTe
 
         Robot.telemetry.addData("aiming at goal?", goalLock)
         Robot.telemetry.addData("in shooting zone?", Robot.inShootingZone)
-        Robot.telemetry.addData("shooter enabled?", shooterEnabled)
-
-//        if (Robot.Subsystems.turret.aimAtGoal) {
-//            Robot.Subsystems.turret.face(goalPose, Robot.follower.pose, Vector())
-//        }
 
         Robot.telemetry.addData("distance to goal", distanceToGoal())
-        Robot.telemetry.addData("index", i)
         Robot.telemetry.addData("target goal pose", targetGoalPose)
-
-//        Robot.telemetry.addData("average tps", launcher.averageTPS)
-//        Robot.telemetry.addData("target tps?", launcher.targetTPS)
-//        Robot.telemetry.addData("shooter ready?", launcher.isReady)
-//        Robot.telemetry.addData("heading", Math.toDegrees(Robot.follower.heading))
-//        Robot.telemetry.addData("heading offset", Globals.globalHeadingOffset)
     }
 
     override fun stop() {
