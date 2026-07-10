@@ -24,9 +24,14 @@ import kotlin.math.sign
  * one unambiguous absolute angle. See that function for the derivation.
  */
 class Turret(val motor: DcMotorEx, val encoder12: AnalogInput, val encoder13: AnalogInput) : ISubsystem {
-    private var currentAngle: Double = 0.0
-    private var targetAngle: Double = 0.0
-    private var motorPower: Double = 0.0
+    // Publicly readable, internally written. Exposed (private set) for observability/telemetry
+    // and unit tests; external callers still change the target only through setTargetAngle().
+    var currentAngle: Double = 0.0
+        private set
+    var targetAngle: Double = 0.0
+        private set
+    var motorPower: Double = 0.0
+        private set
     private var lastWritePower: Double = 0.0
 
     // Motor's own relative encoder isn't used for position (the absolute encoders are the
