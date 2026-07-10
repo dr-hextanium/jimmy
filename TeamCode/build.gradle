@@ -31,10 +31,21 @@ android {
     packagingOptions {
         jniLibs.useLegacyPackaging true
     }
+
+    testOptions {
+        // Any android.jar method a test happens to hit returns a default value instead of
+        // throwing "not mocked". We drive subsystems with hand-rolled fakes (see
+        // src/test/.../testfakes), so this is only a safety net -- it does not affect the APK.
+        unitTests.returnDefaultValues = true
+    }
 }
 
 dependencies {
     implementation 'org.hipparchus:hipparchus-optim:3.0'
     implementation project(':FtcRobotController')
     implementation 'org.ftclib.ftclib:core:2.1.1' // core
+
+    // JVM unit tests (./gradlew :TeamCode:testDebugUnitTest). JUnit 4 only -- no mocking
+    // framework, to stay robust on new JDKs; hardware is faked by hand in src/test.
+    testImplementation 'junit:junit:4.13.2'
 }
