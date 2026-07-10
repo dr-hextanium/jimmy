@@ -1,8 +1,7 @@
 package org.firstinspires.ftc.teamcode.opmode
 
-//import org.firstinspires.ftc.teamcode.command.turret.AimAtGoal
-//import org.firstinspires.ftc.teamcode.command.turret.StopAimingAtGoal
 import com.arcrobotics.ftclib.command.InstantCommand
+import com.arcrobotics.ftclib.command.SequentialCommandGroup
 import com.arcrobotics.ftclib.command.button.GamepadButton
 import com.arcrobotics.ftclib.gamepad.GamepadKeys
 import com.pedropathing.geometry.Pose
@@ -13,6 +12,9 @@ import org.firstinspires.ftc.teamcode.command.intake.IntakeIn
 import org.firstinspires.ftc.teamcode.command.intake.IntakeOut
 import org.firstinspires.ftc.teamcode.command.intake.OpenGate
 import org.firstinspires.ftc.teamcode.command.intake.StopIntake
+import org.firstinspires.ftc.teamcode.command.turret.AimAtGoal
+import org.firstinspires.ftc.teamcode.command.turret.PointTowards
+import org.firstinspires.ftc.teamcode.command.turret.StopAimingAtGoal
 import org.firstinspires.ftc.teamcode.hardware.Globals
 import org.firstinspires.ftc.teamcode.hardware.Robot
 import org.firstinspires.ftc.teamcode.hardware.Robot.Subsystems.launcher
@@ -55,6 +57,12 @@ open class DriverControlled(val isRed: Boolean, initialHeading: Double) : BaseTe
         GamepadButton(primary, SQUARE)
             .whenPressed(InstantCommand({
                 goalLock = !goalLock
+
+                if (goalLock) {
+                    Robot.scheduler.schedule(AimAtGoal())
+                } else {
+                    Robot.scheduler.schedule(SequentialCommandGroup(StopAimingAtGoal(), PointTowards(0.0)))
+                }
             }))
 
         GamepadButton(primary, TRIANGLE)
@@ -111,22 +119,11 @@ open class DriverControlled(val isRed: Boolean, initialHeading: Double) : BaseTe
 
         setTargetPose(goalPose)
 
-//        GamepadButton(primary, SQUARE)
-//            .whenPressed(ParallelCommandGroup(
-//                StopAimingAtGoal(),
-//                PointTowards(0.0)
-//            ))
-//
-//        GamepadButton(primary, CIRCLE)
-//            .whenPressed(AimAtGoal())
+        GamepadButton(primary, GamepadKeys.Button.DPAD_LEFT)
+            .whenPressed(InstantCommand({ Robot.Subsystems.turret.offset += 10.0 }))
 
-//        GamepadButton(primary, GamepadKeys.Button.DPAD_LEFT)
-//            .whenPressed(InstantCommand({ Robot.Subsystems.turret.offset += 10.0 }))
-//
-//        GamepadButton(primary, GamepadKeys.Button.DPAD_RIGHT)
-//            .whenPressed(InstantCommand({ Robot.Subsystems.turret.offset -= 10.0 }))
-
-//        Robot.follower.pose = Pose(Robot.follower.pose.x, Robot.follower.pose.y, initialHeading)
+        GamepadButton(primary, GamepadKeys.Button.DPAD_RIGHT)
+            .whenPressed(InstantCommand({ Robot.Subsystems.turret.offset -= 10.0 }))
     }
 
     override fun cycle() {
