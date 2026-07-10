@@ -7,6 +7,7 @@ import com.arcrobotics.ftclib.gamepad.GamepadEx
 import com.pedropathing.follower.Follower
 import com.pedropathing.geometry.Pose
 import com.qualcomm.hardware.lynx.LynxModule
+import com.qualcomm.robotcore.hardware.AnalogInput
 import com.qualcomm.robotcore.hardware.DcMotorEx
 import com.qualcomm.robotcore.hardware.DigitalChannelImpl
 import com.qualcomm.robotcore.hardware.Gamepad
@@ -18,6 +19,7 @@ import com.skeletonarmy.marrow.zones.PolygonZone
 import org.firstinspires.ftc.robotcore.external.Telemetry
 import org.firstinspires.ftc.teamcode.hardware.subsystem.Intake
 import org.firstinspires.ftc.teamcode.hardware.subsystem.Launcher
+import org.firstinspires.ftc.teamcode.hardware.subsystem.Turret
 import org.firstinspires.ftc.teamcode.hardware.wrapper.BeamBreak
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants
 
@@ -50,17 +52,16 @@ object Robot : ISubsystem {
 
 	object Subsystems {
 		lateinit var intake: Intake
-//		lateinit var turret: Turret
+		lateinit var turret: Turret
 		lateinit var launcher: Launcher
 
-//		fun all() = listOf(intake, turret, launcher)
-        fun all() = listOf(intake, launcher)
+		fun all() = listOf(intake, turret, launcher)
 	}
 
 	object Motors {
 		object Intake { lateinit var motor: DcMotorEx }
 
-//		object Turret { lateinit var motor: DcMotorEx }
+		object Turret { lateinit var motor: DcMotorEx }
 
 		object Launcher {
 			lateinit var leftMotor: DcMotorEx
@@ -69,7 +70,7 @@ object Robot : ISubsystem {
 
 		fun all() = listOf(
 			Intake.motor,
-//			Turret.motor,
+			Turret.motor,
 			Launcher.rightMotor,
 			Launcher.leftMotor
 		)
@@ -96,6 +97,13 @@ object Robot : ISubsystem {
         }
     }
 
+    object AnalogDevices {
+        object Turret {
+            lateinit var encoder12Tooth: AnalogInput
+            lateinit var encoder13Tooth: AnalogInput
+        }
+    }
+
 	fun init(hw: HardwareMap, telemetry: Telemetry, gamepad1: Gamepad, gamepad2: Gamepad) {
 		Robot.telemetry = MultipleTelemetry(FtcDashboard.getInstance().telemetry, telemetry)
 		Robot.hw = hw
@@ -113,7 +121,7 @@ object Robot : ISubsystem {
 
 		run {
 			Motors.Intake.motor = hw[Names.Motors.Intake.motor] as DcMotorEx
-//			Motors.Turret.motor = hw[Names.Motors.Turret.motor] as DcMotorEx
+			Motors.Turret.motor = hw[Names.Motors.Turret.motor] as DcMotorEx
 			Motors.Launcher.leftMotor = hw[Names.Motors.Launcher.leftMotor] as DcMotorEx
 			Motors.Launcher.rightMotor = hw[Names.Motors.Launcher.rightMotor] as DcMotorEx
 
@@ -123,6 +131,9 @@ object Robot : ISubsystem {
             DigitalDevices.Intake.bottomBeamBreak = BeamBreak(hw.digitalChannel[Names.DigitalDevices.Intake.bottomBeamBreak] as DigitalChannelImpl)
             DigitalDevices.Intake.middleBeamBreak = BeamBreak(hw.digitalChannel[Names.DigitalDevices.Intake.middleBeamBreak] as DigitalChannelImpl)
             DigitalDevices.Intake.topBeamBreak = BeamBreak(hw.digitalChannel[Names.DigitalDevices.Intake.topBeamBreak] as DigitalChannelImpl)
+
+            AnalogDevices.Turret.encoder12Tooth = hw[Names.AnalogDevices.Turret.encoder12Tooth] as AnalogInput
+            AnalogDevices.Turret.encoder13Tooth = hw[Names.AnalogDevices.Turret.encoder13Tooth] as AnalogInput
 		}
 
 //		val limelight = hw["limelight"] as Limelight3A
@@ -138,7 +149,7 @@ object Robot : ISubsystem {
             DigitalDevices.Intake.middleBeamBreak,
             DigitalDevices.Intake.topBeamBreak
         )
-//		Subsystems.turret = Turret(Motors.Turret.motor)
+		Subsystems.turret = Turret(Motors.Turret.motor, AnalogDevices.Turret.encoder12Tooth, AnalogDevices.Turret.encoder13Tooth)
 		Subsystems.launcher = Launcher(Motors.Launcher.leftMotor, Motors.Launcher.rightMotor, Servos.Launcher.hood)
 
 		scheduler.registerSubsystem(*Subsystems.all().toTypedArray())
