@@ -23,12 +23,6 @@ object Globals {
     @JvmField
     val BLUE_GOAL_POSE = Vector(Pose(0.0, 144.0))
 
-//    @JvmField
-//    val RED_RESET_POSE = Pose(37.25, 31.75, 0.0)
-//
-//    @JvmField
-//    val BLUE_RESET_POSE = Pose(106.75, 31.75, PI)
-
     @JvmField
     val BLUE_RESET_POSE = Pose(27.0, 131.5, Math.toDegrees(143.0))
 

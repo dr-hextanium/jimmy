@@ -127,7 +127,6 @@ open class DriverControlled(val isRed: Boolean, initialHeading: Double) : BaseTe
         Robot.telemetry.addData("hood scalar", hoodPosition)
 
         Robot.telemetry.addData("aiming at goal?", goalLock)
-        Robot.telemetry.addData("in shooting zone?", Robot.inShootingZone)
 
         Robot.telemetry.addData("distance to goal", distanceToGoal())
         Robot.telemetry.addData("target goal pose", targetGoalPose)

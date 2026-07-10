@@ -15,7 +15,6 @@ import com.qualcomm.robotcore.hardware.HardwareMap
 import com.qualcomm.robotcore.hardware.Servo
 import com.qualcomm.robotcore.hardware.VoltageSensor
 import com.qualcomm.robotcore.util.ElapsedTime
-import com.skeletonarmy.marrow.zones.PolygonZone
 import org.firstinspires.ftc.robotcore.external.Telemetry
 import org.firstinspires.ftc.teamcode.hardware.subsystem.Intake
 import org.firstinspires.ftc.teamcode.hardware.subsystem.Launcher
@@ -41,11 +40,6 @@ object Robot : ISubsystem {
 	var voltage: Double = 0.0
 
 	lateinit var follower: Follower
-
-    val zone = PolygonZone(17.7, 18.0)
-
-    val inShootingZone: Boolean
-        get() = zone.isInside(Zones.CLOSE_LAUNCH_ZONE) || zone.isInside(Zones.FAR_LAUNCH_ZONE)
 
 	val pose
 		get() = follower.pose
@@ -164,8 +158,6 @@ object Robot : ISubsystem {
 
 	override fun read() {
 		follower.update()
-        zone.setPosition(follower.pose.x, follower.pose.y)
-        zone.setRotation(follower.heading + Globals.globalHeadingOffset)
 
 //		if (voltageTimer.milliseconds() > 100.0 && voltageSensor.hasNext()) {
 //			voltage = voltageSensor.next().voltage
