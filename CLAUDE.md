@@ -17,7 +17,7 @@ An FTC (FIRST Tech Challenge) robot control repo for the 2025-26 "Decode" season
 - `FtcRobotController` — vendor SDK app (do not modify unless absolutely necessary; it's the stock FTC app shell).
 - `TeamCode` — all team code, under `org.firstinspires.ftc.teamcode`. This is where nearly all work happens.
 
-There is no CI and no unit test suite — the only way to validate behavior is deploying to the physical Control/Driver Hub or reasoning carefully about the command/subsystem code.
+There is no CI. Behavior is validated by a JVM unit-test suite (`TeamCode/src/test/`, run via `./gradlew :TeamCode:testDebugUnitTest` — see `TeamCode/src/test/README.md`) and by deploying to the physical Control/Driver Hub.
 
 ## Build commands
 
@@ -27,7 +27,7 @@ Run from the repo root (uses the Gradle wrapper):
 - `./gradlew clean` — clean build outputs.
 - `./gradlew :TeamCode:installDebug` — build and install onto a connected/ADB-linked Driver Hub.
 
-There are no unit tests configured for this project (`RPMTest.kt` in `opmode/debug` is an on-robot debug OpMode, not a JUnit test).
+JVM unit tests live in `TeamCode/src/test/` (`./gradlew :TeamCode:testDebugUnitTest`; requires JDK 17–21 — Android Studio's JBR works). `RPMTest.kt` in `opmode/debug` is an on-robot debug OpMode, not a JUnit test.
 
 ## Architecture
 
