@@ -2,9 +2,7 @@ package org.firstinspires.ftc.teamcode.opmode
 
 //import org.firstinspires.ftc.teamcode.command.turret.AimAtGoal
 //import org.firstinspires.ftc.teamcode.command.turret.StopAimingAtGoal
-import com.arcrobotics.ftclib.command.ConditionalCommand
 import com.arcrobotics.ftclib.command.InstantCommand
-import com.arcrobotics.ftclib.command.ParallelCommandGroup
 import com.arcrobotics.ftclib.command.button.GamepadButton
 import com.arcrobotics.ftclib.gamepad.GamepadKeys
 import com.pedropathing.geometry.Pose
@@ -87,20 +85,12 @@ open class DriverControlled(val isRed: Boolean, initialHeading: Double) : BaseTe
             }))
 
         GamepadTrigger(primary, 0.3, GamepadKeys.Trigger.LEFT_TRIGGER)
-            .whenActive(ParallelCommandGroup(IntakeIn(), CloseGate()))
+            .whenActive(IntakeIn())
             .whenInactive(StopIntake())
 
         GamepadTrigger(primary, 0.5, GamepadKeys.Trigger.RIGHT_TRIGGER)
-            .whenReleased(InstantCommand({ goalLock = false }), true)
-            .whenActive(ParallelCommandGroup(
-                IntakeIn(1.0), // 0.7, 70, 0.76, 78
-                ConditionalCommand(
-                    OpenGate(),
-                    CloseGate(),
-//                ) { Robot.inShootingZone }
-                ) { true },
-            ))
-            .whenInactive(ParallelCommandGroup(StopIntake(), CloseGate()))
+            .whenActive(OpenGate())
+            .whenInactive(CloseGate())
 
         GamepadButton(primary, GamepadKeys.Button.RIGHT_STICK_BUTTON)
             .whenPressed(InstantCommand({ Globals.globalHeadingOffset = Robot.follower.pose.heading }))
