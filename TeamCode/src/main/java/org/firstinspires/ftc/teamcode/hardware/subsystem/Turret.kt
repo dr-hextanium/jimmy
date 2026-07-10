@@ -7,6 +7,7 @@ import com.qualcomm.robotcore.hardware.DcMotor
 import com.qualcomm.robotcore.hardware.DcMotorEx
 import com.qualcomm.robotcore.hardware.DcMotorSimple
 import com.qualcomm.robotcore.util.Range
+import org.firstinspires.ftc.teamcode.hardware.Globals
 import org.firstinspires.ftc.teamcode.hardware.ISubsystem
 import org.firstinspires.ftc.teamcode.hardware.Robot
 import kotlin.math.abs
@@ -61,11 +62,12 @@ class Turret(val motor: DcMotorEx, val encoder12: AnalogInput, val encoder13: An
     }
 
     override fun update() {
-//        if (aimAtGoal) {
-//            val goalPose = if (Globals.isRed ?: true) Globals.RED_GOAL_POSE else Globals.BLUE_GOAL_POSE
-////            face(goalPose, Robot.pose, Robot.follower.velocity)
-//            face(goalPose, Robot.follower.pose, Vector())
-//        }
+        if (aimAtGoal) {
+            val goalPose = if (Globals.isRed ?: true) Globals.RED_GOAL_POSE else Globals.BLUE_GOAL_POSE
+            // Robot velocity left at zero for now (no lead correction yet) -- feeding a real
+            // velocity vector here is a tuning follow-up, not part of re-enabling the turret.
+            face(goalPose, Robot.follower.pose, Vector())
+        }
 
         val error = targetAngle - currentAngle
 
