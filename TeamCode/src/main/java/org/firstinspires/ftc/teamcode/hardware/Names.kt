@@ -25,4 +25,12 @@ object Names {
             const val servo = "hood"
         }
     }
+
+    object DigitalDevices {
+        object Intake {
+            const val bottomBeamBreak = "bbb"
+            const val middleBeamBreak = "mbb"
+            const val topBeamBreak = "tbb"
+        }
+    }
 }

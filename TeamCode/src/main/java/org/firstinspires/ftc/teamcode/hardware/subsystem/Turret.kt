@@ -64,12 +64,12 @@ class Turret(val motor: DcMotorEx) : ISubsystem {
     }
 
     override fun write() {
-        Robot.telemetry.addData("current turret angle", currentAngle)
-        Robot.telemetry.addData("target turret angle", getAngle())
-        Robot.telemetry.addData("turret motor power", motorPower)
-        Robot.telemetry.addData("aiming at goal", aimAtGoal)
-        Robot.telemetry.addData("turret offset", offset)
-        Robot.telemetry.addData("turret at target", isAtTarget())
+    //        Robot.telemetry.addData("current turret angle", currentAngle)
+    //        Robot.telemetry.addData("target turret angle", getAngle())
+    //        Robot.telemetry.addData("turret motor power", motorPower)
+    //        Robot.telemetry.addData("aiming at goal", aimAtGoal)
+    //        Robot.telemetry.addData("turret offset", offset)
+    //        Robot.telemetry.addData("turret at target", isAtTarget())
 
         if (abs(motorPower - lastWritePower) > POWER_UPDATE_THRESHOLD) {
             motor.power = motorPower
@@ -77,19 +77,19 @@ class Turret(val motor: DcMotorEx) : ISubsystem {
         }
     }
 
-//    fun setTargetAngle(degrees: Double) {
-//        targetAngle = Range.clip(degrees, MIN_ANGLE, MAX_ANGLE)
-//    }
-
     fun setTargetAngle(degrees: Double) {
-        targetAngle = if (degrees in MIN_ANGLE..MAX_ANGLE) {
-            // If the angle is within the valid range, use it.
-            degrees
-        } else {
-            // If the angle is out of range, default to the zero position.
-            0.0
-        }
+        targetAngle = Range.clip(degrees, MIN_ANGLE, MAX_ANGLE)
     }
+
+//    fun setTargetAngle(degrees: Double) {
+//        targetAngle = if (degrees in MIN_ANGLE..MAX_ANGLE) {
+//            // If the angle is within the valid range, use it.
+//            degrees
+//        } else {
+//            // If the angle is out of range, default to the zero position.
+//            0.0
+//        }
+//    }
 
     fun getAngle(): Double {
         return currentAngle
@@ -115,18 +115,8 @@ class Turret(val motor: DcMotorEx) : ISubsystem {
             virtualGoalX - robotPose.x
         )
 
-        var globalTargetDegrees = Math.toDegrees(angleToTargetFromCenter)
+        val globalTargetDegrees = Math.toDegrees(angleToTargetFromCenter)
         val robotHeadingDegrees = Math.toDegrees(robotPose.heading)
-
-        // *** THE VERIFIED FIX IS HERE ***
-        // This condition checks if the robot is facing the "backwards" half of the field
-        // (e.g., on the Red side, facing Blue). The heading will be in the 2nd or 3rd quadrants.
-        if (abs(robotHeadingDegrees) > 90.0) {
-            // If the robot is facing backwards, the turret's frame of reference is flipped.
-            // We add 180 degrees to the global target to compensate for this before
-            // making the angle relative to the robot's heading.
-            globalTargetDegrees += 180
-        }
 
         val robotAngleDiff = normalizeAngle(globalTargetDegrees - robotHeadingDegrees + offset)
 
@@ -156,10 +146,10 @@ class Turret(val motor: DcMotorEx) : ISubsystem {
         var MAX_ANGLE = 90.0
         var MIN_ANGLE = -90.0
 
-        var kP = 0.04
-        var kStatic = 0.067
+        var kP = 0.038
+        var kStatic = 0.02
 
-        var ANGLE_TOLERANCE_DEGREES = 1.0
+        var ANGLE_TOLERANCE_DEGREES = 0.2
         var POWER_UPDATE_THRESHOLD = 0.01
     }
 }

@@ -1,11 +1,10 @@
 package org.firstinspires.ftc.teamcode.command.turret
 
 import org.firstinspires.ftc.teamcode.command.CommandTemplate
-import org.firstinspires.ftc.teamcode.hardware.Robot
 
 class PointTowards(val degrees: Double) : CommandTemplate() {
     override fun initialize() {
-        Robot.Subsystems.turret.setTargetAngle(degrees)
+//        Robot.Subsystems.turret.setTargetAngle(degrees)
     }
 
     override fun execute() {  }

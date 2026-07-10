@@ -15,15 +15,23 @@ object Globals {
     @JvmField
     var isRed: Boolean? = null
 
-    @JvmField
-    val RED_GOAL_POSE = Vector(144.0, 144.0)
+    var globalHeadingOffset: Double = 0.0
 
     @JvmField
-    val BLUE_GOAL_POSE = Vector(0.0, 144.0)
+    val RED_GOAL_POSE = Vector(Pose(144.0, 144.0))
 
     @JvmField
-    val RED_RESET_POSE = Vector(136.0, 9.25)
+    val BLUE_GOAL_POSE = Vector(Pose(0.0, 144.0))
+
+//    @JvmField
+//    val RED_RESET_POSE = Pose(37.25, 31.75, 0.0)
+//
+//    @JvmField
+//    val BLUE_RESET_POSE = Pose(106.75, 31.75, PI)
 
     @JvmField
-    val BLUE_RESET_POSE = Vector(8.0, 9.25)
+    val BLUE_RESET_POSE = Pose(27.0, 131.5, Math.toDegrees(143.0))
+
+    @JvmField
+    val RED_RESET_POSE = Pose(117.0, 131.5, Math.toDegrees(37.0))
 }

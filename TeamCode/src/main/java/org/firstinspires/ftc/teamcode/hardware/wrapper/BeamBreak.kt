@@ -1,10 +1,14 @@
 package org.firstinspires.ftc.teamcode.hardware.wrapper
 
-import org.firstinspires.ftc.teamcode.hardware.Robot.hw
+import com.qualcomm.robotcore.hardware.DigitalChannel
+import com.qualcomm.robotcore.hardware.DigitalChannelImpl
 
-class BeamBreak(val name: String) {
-    val channel by lazy { hw.digitalChannel[name] }
+class BeamBreak(val channel: DigitalChannelImpl) {
+    init {
+        // Set the mode to INPUT so we can read the state.
+        channel.mode = DigitalChannel.Mode.INPUT
+    }
 
-    fun broken() = channel.state
-    fun intact() = !channel.state
+    fun broken() = !channel.state
+    fun intact() = channel.state
 }
