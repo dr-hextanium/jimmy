@@ -15,6 +15,7 @@ import org.firstinspires.ftc.teamcode.command.launcher.StopLauncher
 import org.firstinspires.ftc.teamcode.command.turret.AimAtGoal
 import org.firstinspires.ftc.teamcode.command.turret.PointTowards
 import org.firstinspires.ftc.teamcode.command.turret.StopAimingAtGoal
+import org.firstinspires.ftc.teamcode.control.ShooterModel
 import org.firstinspires.ftc.teamcode.hardware.Robot
 import org.firstinspires.ftc.teamcode.hardware.subsystem.Intake
 import org.firstinspires.ftc.teamcode.hardware.subsystem.Launcher
@@ -47,6 +48,16 @@ class CommandsTest {
         // Keep turret clamps deterministic for PointTowards.
         Turret.MIN_ANGLE = -90.0
         Turret.MAX_ANGLE = 90.0
+
+        // LaunchByDistance -> aimAtDistance reads ShooterModel; pin it to defaults.
+        ShooterModel.TARGET_HEIGHT_DELTA_M = 0.5
+        ShooterModel.HOOD_MIN_ANGLE_RAD = Math.toRadians(30.0)
+        ShooterModel.HOOD_MAX_ANGLE_RAD = Math.toRadians(60.0)
+        ShooterModel.SERVO_AT_MIN_ANGLE = 0.25
+        ShooterModel.SERVO_AT_MAX_ANGLE = 0.905
+        ShooterModel.SLIP_EFFICIENCY = 0.85
+        ShooterModel.LAUNCHER_TICKS_PER_REV = 28.0
+        ShooterModel.MAX_TPS = 2500.0
 
         intake = Intake(
             FakeDcMotorEx(),
@@ -129,12 +140,11 @@ class CommandsTest {
     }
 
     @Test
-    fun launchByDistance_usesDistanceToScalar() {
-        // distanceToScalar is a placeholder (returns 0) so targetTPS lands at 0. Pinned so a future
-        // tuning of SCALAR_PER_INCH/BASE_SCALAR surfaces as a deliberate test update.
+    fun launchByDistance_appliesKinematicAimingSolution() {
+        val expected = ShooterModel.aim(60.0)
         LaunchByDistance(60.0).initialize()
-        assertEquals(launcher.distanceToScalar(60.0) * Launcher.MAX_TPS, launcher.targetTPS, 1e-9)
-        assertEquals(0.0, launcher.targetTPS, 1e-9)
+        assertEquals(expected.targetTps, launcher.targetTPS, 1e-9)
+        assertEquals(expected.hoodServoPosition, launcher.targetHoodPosition, 1e-9)
     }
 
     // ---- turret commands ----

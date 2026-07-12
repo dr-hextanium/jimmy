@@ -8,18 +8,31 @@ import com.qualcomm.robotcore.hardware.DcMotorSimple.Direction.REVERSE
 import com.qualcomm.robotcore.hardware.Gamepad
 import com.qualcomm.robotcore.hardware.Servo
 import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit
+import org.firstinspires.ftc.teamcode.control.ShooterModel
 import org.firstinspires.ftc.teamcode.hardware.ISubsystem
 import org.firstinspires.ftc.teamcode.hardware.Robot
-import org.firstinspires.ftc.teamcode.utility.InterpLUT
 import org.firstinspires.ftc.teamcode.utility.absPercentDifference
 import org.firstinspires.ftc.teamcode.utility.map
 import org.firstinspires.ftc.teamcode.utility.percentDifference
 import kotlin.math.abs
-import kotlin.math.pow
 
+/**
+ * Flywheel launcher: a single flywheel driven 1:1 by two motors, plus a servo-actuated hood.
+ *
+ * Speed control is feedforward-first: the flywheel power is `kS + kV*targetTPS + kP*(targetTPS -
+ * measuredTPS)`, clamped to [0, 1]. The feedforward `kV*targetTPS` (with kV ~ 1/MAX_TPS) alone
+ * holds roughly the right speed, so even at kP = 0 the loop behaves sanely; the small proportional
+ * term saturates to full power while spinning up and trims to zero at speed. This is deliberately
+ * not a proportional-dominant loop -- a mistuned kP must not be able to leave the flywheel unable
+ * to reach speed, since both teleop and every auto drive the flywheel through here.
+ *
+ * There are two ways to set the target:
+ *  - [targetTPSByScalar] / [targetHoodByScalar]: the manual, field-tested 0..1 path (driver trims,
+ *    autos' hand-tuned constants).
+ *  - [aimAtDistance]: the kinematic path -- [ShooterModel] turns a field distance into the flywheel
+ *    speed and hood angle that physically reach the goal.
+ */
 class Launcher(val left: DcMotorEx, val right: DcMotorEx, val hood: Servo) : ISubsystem {
-    val gamepad by lazy { Robot.gamepad1.gamepad }
-
     val motors = listOf(left, right)
 
     var currentPower = 0.0
@@ -32,20 +45,14 @@ class Launcher(val left: DcMotorEx, val right: DcMotorEx, val hood: Servo) : ISu
 
     val atSpeed: Boolean
         get() {
-            if (targetTPS < 100.0) return false
+            if (targetTPS < MIN_TPS) return false
             return absPercentDifference(averageTPS, targetTPS) <= AT_SPEED_TOLERANCE
         }
 
-    private var wasReady = false
     val isReady: Boolean
         get() = atSpeed
 
     fun scaleToTPS(scale: Double) = scale * MAX_TPS
-
-    fun distanceToScalar(distance: Double): Double {
-        val calculated = (distance * SCALAR_PER_INCH) + BASE_SCALAR
-        return calculated.coerceIn(0.0, 1.0)
-    }
 
     fun targetTPSByScalar(scale: Double) {
         targetTPS = scaleToTPS(scale)
@@ -55,8 +62,14 @@ class Launcher(val left: DcMotorEx, val right: DcMotorEx, val hood: Servo) : ISu
         targetHoodPosition = map(scale, 0.0, 1.0, HOOD_HIGH, HOOD_LOW)
     }
 
+    /** Aim for a target [distanceInches] downrange: set flywheel speed and hood from [ShooterModel]. */
+    fun aimAtDistance(distanceInches: Double) {
+        val solution = ShooterModel.aim(distanceInches)
+        targetTPS = solution.targetTps
+        targetHoodPosition = solution.hoodServoPosition
+    }
+
     override fun reset() {
-        wasReady = false
         targetTPS = 0.0
         currentPower = 0.0
 
@@ -80,29 +93,18 @@ class Launcher(val left: DcMotorEx, val right: DcMotorEx, val hood: Servo) : ISu
     override fun read() {  }
 
     override fun update() {
-        val error = targetTPS - averageTPS
-
-        currentPower = if (error <= 0) {
+        // Feedforward-first velocity control. The flywheel is single-direction, so power is clamped
+        // to [0, 1]: it can spin the wheel up but never actively brakes it.
+        currentPower = if (targetTPS < MIN_TPS) {
             0.0
         } else {
-            1.0
-        }
-
-        val nowReady = isReady
-
-        if (nowReady != wasReady) {
-//            if (nowReady) {
-//                signalAtSpeed(gamepad)
-//            } else {
-//                signalWrongSpeed(gamepad)
-//            }
-            wasReady = nowReady
+            (kS + kV * targetTPS + kP * (targetTPS - averageTPS)).coerceIn(0.0, 1.0)
         }
 
         Robot.telemetry.addData("Launcher Target TPS", targetTPS)
+        Robot.telemetry.addData("Launcher Measured TPS", averageTPS)
         Robot.telemetry.addData("Launcher output power", currentPower)
-        Robot.telemetry.addData("Left Vel", left.velocity)
-        Robot.telemetry.addData("Right Vel", right.velocity)
+        Robot.telemetry.addData("Launcher at speed?", isReady)
     }
 
     override fun write() {
@@ -113,77 +115,6 @@ class Launcher(val left: DcMotorEx, val right: DcMotorEx, val hood: Servo) : ISu
         }
 
         hood.position = targetHoodPosition
-//        hood.position = HOOD_HIGH
-    }
-
-    object Regressions {
-        val POWER_LOWER_BOUND = 0.53
-        val POWER_UPPER_BOUND = 0.72
-
-        fun powerRegression(distance: Double): Double {
-            if (distance > 115.0) {
-               return LookupTables.farPowerInterpLUT[distance]
-            }
-
-            val a = 0.495019
-            val b = 1.00384
-
-            val output = a * b.pow(distance)
-
-            return output.coerceIn(POWER_LOWER_BOUND, POWER_UPPER_BOUND)
-        }
-
-        val HOOD_LOWER_BOUND = 0.475
-        val HOOD_UPPER_BOUND = 0.88
-
-        fun hoodRegression(distance: Double): Double {
-            if (distance > 115.0) {
-                return LookupTables.farHoodInterpLUT[distance]
-            }
-
-            val a = 6.55652e-7
-            val b = -0.000162445
-            val c = 0.00560722
-            val d = 0.797042
-
-            val output = (a * distance.pow(3)) + (b * distance.pow(2)) + (c * distance) + d
-
-            return output.coerceIn(HOOD_LOWER_BOUND, HOOD_UPPER_BOUND)
-        }
-    }
-
-    object LookupTables {
-//        // inches -> scalar
-//        val powerInterpLUT = InterpLUT()
-//            .add(27.5, 0.63)
-//            .add(31.5, 0.76)
-//            .add(70.0, 0.85)
-//            .add(77.0, 0.78)
-//            .also { it.createLUT() }
-//
-//        // inches -> degree
-//        val hoodInterpLUT = InterpLUT()
-//            .add(27.5, 0.95)
-//            .add(31.5, 0.43)
-//            .add(70.0, 0.29)
-//            .add(77.0, 0.45)
-//            .also { it.createLUT() }
-//
-//        // inches -> seconds
-//        val timeInterpLUT = InterpLUT()
-//            .add(30.0, 0.0)
-//            .add(120.0, 2.0)
-//            .also { it.createLUT() }
-
-        val farPowerInterpLUT = InterpLUT()
-            .add(122.2, 0.82)
-            .add(130.0, 0.89)
-            .also { it.createLUT() }
-
-        val farHoodInterpLUT = InterpLUT()
-            .add(122.2, 0.03)
-            .add(130.0, 0.185)
-            .also { it.createLUT() }
     }
 
     companion object {
@@ -191,25 +122,16 @@ class Launcher(val left: DcMotorEx, val right: DcMotorEx, val hood: Servo) : ISu
         const val HOOD_HIGH = 0.25
 
         const val MIN_TPS = 100.0
-        const val IDLE_TPS = 1000.0
-        const val MAX_TPS = 2500.0
+
+        /** Manual-scalar ceiling and physics clamp share one source of truth. */
+        val MAX_TPS get() = ShooterModel.MAX_TPS
 
         const val AT_SPEED_TOLERANCE = 0.05 // 5% tolerance
 
-        const val BASE_SCALAR = 0.0
-        const val SCALAR_PER_INCH = 0.0
-
-        // Flywheel: single 72mm-diameter wheel, driven 1:1 by the two motors above.
-        const val FLYWHEEL_DIAMETER_MM = 72.0
-
-        // Counter rollers (28mm diameter) are mechanically linked to, and spin reversed
-        // relative to, the flywheel shaft via a 40t -> 20t 2:1 speedup. They're not
-        // independently driven or controlled -- reference only, no active control logic.
-        const val COUNTER_ROLLER_DIAMETER_MM = 28.0
-        const val COUNTER_ROLLER_GEAR_RATIO = 2.0 // 40t -> 20t speedup, reversed direction
-
-        // Hood servo gear ratio -- placeholder, exact tooth count TBD (24t to unknown).
-        const val HOOD_GEAR_RATIO = 4.0
+        // Feedforward-first velocity-controller gains (on-robot tunables).
+        var kS = 0.0      // static power offset
+        var kV = 0.0004   // power per TPS of target (~ 1 / MAX_TPS)
+        var kP = 0.0003   // power per TPS of error (kept small; feedforward carries the load)
     }
 
     object Effects {

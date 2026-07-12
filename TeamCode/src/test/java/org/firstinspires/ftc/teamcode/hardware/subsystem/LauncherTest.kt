@@ -3,6 +3,7 @@ package org.firstinspires.ftc.teamcode.hardware.subsystem
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry
 import com.qualcomm.robotcore.hardware.DcMotor
 import com.qualcomm.robotcore.hardware.DcMotorSimple
+import org.firstinspires.ftc.teamcode.control.ShooterModel
 import org.firstinspires.ftc.teamcode.hardware.Robot
 import org.firstinspires.ftc.teamcode.testfakes.FakeDcMotorEx
 import org.firstinspires.ftc.teamcode.testfakes.FakeServo
@@ -14,11 +15,12 @@ import org.junit.Test
 
 /**
  * Tests for the Launcher (flywheel) subsystem: speed measurement, at-speed detection, the scalar
- * -> TPS / hood conversions, the bang-bang power controller, and the NaN-safe write path.
+ * -> TPS / hood conversions, the kinematic aim wiring, the feedforward-first velocity controller,
+ * and the NaN-safe write path.
  *
- * distanceToScalar is characterized (not contract-checked) because SCALAR_PER_INCH / BASE_SCALAR
- * are still placeholder zeros -- the test pins the current "always 0" behavior so a future tuning
- * change is a visible, deliberate edit.
+ * The velocity-controller gains are pinned to defaults here so the (feedforward-dominated) power
+ * outputs are deterministic; if a gain is re-tuned on the robot and one of these fails, update it
+ * on purpose. MAX_TPS is sourced from ShooterModel, so its tunables are reset too.
  */
 class LauncherTest {
     private lateinit var left: FakeDcMotorEx
@@ -29,6 +31,24 @@ class LauncherTest {
     @Before
     fun setUp() {
         Robot.telemetry = MultipleTelemetry() // update() writes telemetry
+
+        Launcher.kS = 0.0
+        Launcher.kV = 0.0004
+        Launcher.kP = 0.0003
+
+        // MAX_TPS (and the aim path) come from ShooterModel; pin it to defaults.
+        ShooterModel.FLYWHEEL_DIAMETER_MM = 72.0
+        ShooterModel.COUNTER_ROLLER_DIAMETER_MM = 28.0
+        ShooterModel.COUNTER_ROLLER_GEAR_RATIO = 2.0
+        ShooterModel.LAUNCHER_TICKS_PER_REV = 28.0
+        ShooterModel.SLIP_EFFICIENCY = 0.85
+        ShooterModel.TARGET_HEIGHT_DELTA_M = 0.5
+        ShooterModel.HOOD_MIN_ANGLE_RAD = Math.toRadians(30.0)
+        ShooterModel.HOOD_MAX_ANGLE_RAD = Math.toRadians(60.0)
+        ShooterModel.SERVO_AT_MIN_ANGLE = 0.25
+        ShooterModel.SERVO_AT_MAX_ANGLE = 0.905
+        ShooterModel.MAX_TPS = 2500.0
+
         left = FakeDcMotorEx()
         right = FakeDcMotorEx()
         hood = FakeServo()
@@ -108,35 +128,65 @@ class LauncherTest {
         assertEquals((Launcher.HOOD_HIGH + Launcher.HOOD_LOW) / 2.0, launcher.targetHoodPosition, 1e-9)
     }
 
+    // ---- kinematic aim wiring ----
+
     @Test
-    fun distanceToScalar_characterization_placeholderReturnsZero() {
-        // SCALAR_PER_INCH and BASE_SCALAR are still 0, so every distance maps to 0 (then clamped).
-        // Update this test when those constants are tuned on-robot.
-        assertEquals(0.0, launcher.distanceToScalar(0.0), 1e-9)
-        assertEquals(0.0, launcher.distanceToScalar(50.0), 1e-9)
-        assertEquals(0.0, launcher.distanceToScalar(1000.0), 1e-9)
+    fun aimAtDistance_appliesShooterModelSolution() {
+        val expected = ShooterModel.aim(120.0)
+        launcher.aimAtDistance(120.0)
+        assertEquals(expected.targetTps, launcher.targetTPS, 1e-9)
+        assertEquals(expected.hoodServoPosition, launcher.targetHoodPosition, 1e-9)
     }
 
-    // ---- update(): bang-bang controller ----
+    // ---- update(): feedforward-first velocity controller ----
 
     @Test
-    fun update_commandsFullPowerWhenBelowTarget() {
+    fun update_belowTarget_saturatesTowardFullPower() {
         launcher.targetTPSByScalar(0.8) // 2000 TPS
         setMeasuredVelocities(1000.0, 1000.0)
         launcher.update()
+        // 0.0004*2000 + 0.0003*(2000-1000) = 0.8 + 0.3 = 1.1 -> clamped to 1.0
         assertEquals(1.0, launcher.currentPower, 1e-9)
     }
 
     @Test
-    fun update_commandsZeroPowerWhenAtOrAboveTarget() {
-        launcher.targetTPS = 1000.0
-        setMeasuredVelocities(2000.0, 2000.0) // above target
+    fun update_atTarget_holdsFeedforwardPower() {
+        launcher.targetTPS = 2000.0
+        setMeasuredVelocities(2000.0, 2000.0)
         launcher.update()
-        assertEquals(0.0, launcher.currentPower, 1e-9)
+        // kV*target only (error is zero): 0.0004 * 2000 = 0.8
+        assertEquals(0.8, launcher.currentPower, 1e-9)
+    }
 
-        setMeasuredVelocities(1000.0, 1000.0) // exactly at target -> error 0 -> off
+    @Test
+    fun update_targetBelowFloor_commandsZero() {
+        launcher.targetTPSByScalar(0.02) // 50 TPS, under MIN_TPS
+        setMeasuredVelocities(0.0, 0.0)
         launcher.update()
         assertEquals(0.0, launcher.currentPower, 1e-9)
+    }
+
+    @Test
+    fun update_aboveTarget_reducesPowerButNeverReverses() {
+        launcher.targetTPS = 1000.0
+        setMeasuredVelocities(2000.0, 2000.0) // overspeed
+        launcher.update()
+        // 0.0004*1000 + 0.0003*(1000-2000) = 0.4 - 0.3 = 0.1 (coasts, single-direction)
+        assertEquals(0.1, launcher.currentPower, 1e-9)
+
+        setMeasuredVelocities(5000.0, 5000.0) // way overspeed -> would go negative, clamped to 0
+        launcher.update()
+        assertEquals(0.0, launcher.currentPower, 1e-9)
+    }
+
+    @Test
+    fun update_powerIsAlwaysWithinUnitRange() {
+        launcher.targetTPS = 1500.0
+        for (v in listOf(0.0, 750.0, 1500.0, 3000.0, 6000.0)) {
+            setMeasuredVelocities(v, v)
+            launcher.update()
+            assertTrue("power $${launcher.currentPower} out of [0,1] at v=$v", launcher.currentPower in 0.0..1.0)
+        }
     }
 
     // ---- write(): motor + hood output, NaN-safe threshold ----
@@ -146,7 +196,7 @@ class LauncherTest {
         launcher.targetTPSByScalar(0.8)
         setMeasuredVelocities(0.0, 0.0)
         launcher.targetHoodByScalar(0.5)
-        launcher.update() // currentPower -> 1.0
+        launcher.update() // currentPower saturates to 1.0
         launcher.write()
 
         assertEquals(1.0, left.getPower(), 1e-9)
@@ -163,7 +213,7 @@ class LauncherTest {
         launcher.write()
         assertEquals(1.0, left.getPower(), 1e-9)
 
-        // Command off: percentDifference(1.0, 0.0) is large -> motors written to 0.
+        // Command off: target below floor -> power 0. percentDifference(1.0, 0.0) is large -> written.
         launcher.targetTPS = 0.0
         launcher.update()
         launcher.write()
