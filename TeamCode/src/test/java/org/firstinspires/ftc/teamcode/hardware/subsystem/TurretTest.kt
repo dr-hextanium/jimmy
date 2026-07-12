@@ -3,11 +3,12 @@ package org.firstinspires.ftc.teamcode.hardware.subsystem
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry
 import com.pedropathing.geometry.Pose
 import com.pedropathing.math.Vector
+import org.firstinspires.ftc.teamcode.control.ShooterModel
 import org.firstinspires.ftc.teamcode.hardware.Robot
 import org.firstinspires.ftc.teamcode.testfakes.FakeAnalogInput
 import org.firstinspires.ftc.teamcode.testfakes.FakeDcMotorEx
+import org.firstinspires.ftc.teamcode.testfakes.FakeTimeSource
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -17,15 +18,19 @@ import kotlin.math.atan2
 /**
  * Tests for the Turret subsystem.
  *
- * The centrepiece is a forward-model sweep of the two-encoder Chinese-Remainder / vernier decode
- * ([fuseAbsoluteAngle], reached through read()/currentAngle). The forward model is derived purely
- * from the drivetrain's tooth counts (137t turret gear, 12t and 13t idler encoder gears), NOT from
- * the decode itself, so `decode(forward(theta)) == theta` is a genuine self-consistency check
- * rather than a tautology.
+ * Two independent concerns:
+ *  1. The two-encoder vernier / Chinese-Remainder absolute-position decode ([fuseAbsoluteAngle],
+ *     reached through read()/currentAngle). The forward model is derived purely from the tooth
+ *     counts (137t / 12t / 13t), NOT from the decode itself, so `decode(forward(theta)) == theta`
+ *     is a genuine self-consistency check.
+ *  2. The trapezoidal-profiled feedforward+PID control law. Following the suite philosophy, these
+ *     assert *contracts* -- the profiled setpoint stays within its velocity/accel limits and
+ *     converges to the target, effort points the right way, output is clamped, a settled turret
+ *     commands zero -- rather than pinning tuning gains. Time is driven by a [FakeTimeSource].
  *
- * IMPORTANT SCOPE: this validates the decode ALGEBRA only. It does NOT validate hardware
- * calibration -- real gear-mesh direction (sign of the ratios) and the ENCODER_*_ZERO_OFFSET_DEG
- * constants must still be confirmed on the physical turret before trusting this for motion.
+ * IMPORTANT SCOPE: this validates decode ALGEBRA and control STRUCTURE only, not hardware
+ * calibration -- gear-mesh direction, the ENCODER_*_ZERO_OFFSET_DEG constants, and the shooter
+ * physics constants must still be confirmed on the physical robot.
  */
 class TurretTest {
     // Physical gear ratios: idler encoder revolutions per turret revolution. Derived from the
@@ -37,6 +42,7 @@ class TurretTest {
     private lateinit var motor: FakeDcMotorEx
     private lateinit var encoder12: FakeAnalogInput
     private lateinit var encoder13: FakeAnalogInput
+    private lateinit var clock: FakeTimeSource
     private lateinit var turret: Turret
 
     @Before
@@ -45,19 +51,37 @@ class TurretTest {
 
         // Pin the shared companion tunables to their production defaults so test order can't leak.
         Turret.kP = 0.038
+        Turret.kV = 0.0012
+        Turret.kA = 0.0
+        Turret.kD = 0.0
         Turret.kStatic = 0.02
         Turret.MIN_ANGLE = -90.0
         Turret.MAX_ANGLE = 90.0
+        Turret.MAX_VELOCITY = 700.0
+        Turret.MAX_ACCELERATION = 3600.0
         Turret.ANGLE_TOLERANCE_DEGREES = 0.2
         Turret.POWER_UPDATE_THRESHOLD = 0.01
-        Turret.SHOOT_SPEED = 180.0
         Turret.ENCODER_12T_ZERO_OFFSET_DEG = 0.0
         Turret.ENCODER_13T_ZERO_OFFSET_DEG = 0.0
+
+        // face() and the (unused-here) aim path read ShooterModel; pin it to defaults.
+        ShooterModel.FLYWHEEL_DIAMETER_MM = 72.0
+        ShooterModel.COUNTER_ROLLER_DIAMETER_MM = 28.0
+        ShooterModel.COUNTER_ROLLER_GEAR_RATIO = 2.0
+        ShooterModel.LAUNCHER_TICKS_PER_REV = 28.0
+        ShooterModel.SLIP_EFFICIENCY = 0.85
+        ShooterModel.TARGET_HEIGHT_DELTA_M = 0.5
+        ShooterModel.HOOD_MIN_ANGLE_RAD = Math.toRadians(30.0)
+        ShooterModel.HOOD_MAX_ANGLE_RAD = Math.toRadians(60.0)
+        ShooterModel.SERVO_AT_MIN_ANGLE = 0.25
+        ShooterModel.SERVO_AT_MAX_ANGLE = 0.905
+        ShooterModel.MAX_TPS = 2500.0
 
         motor = FakeDcMotorEx()
         encoder12 = FakeAnalogInput()
         encoder13 = FakeAnalogInput()
-        turret = Turret(motor, encoder12, encoder13)
+        clock = FakeTimeSource()
+        turret = Turret(motor, encoder12, encoder13, clock)
         turret.reset()
     }
 
@@ -135,58 +159,81 @@ class TurretTest {
         }
     }
 
-    // ---- Proportional + static-feedforward control law ----
+    // ---- trapezoidal-profiled feedforward + PID control law ----
 
-    private fun runControl(target: Double, currentTheta: Double) {
-        applyTurretAngle(currentTheta)
+    /** First update after reset seeds the profile at the current angle and integrates nothing. */
+    private fun prime(current: Double, target: Double) {
+        applyTurretAngle(current)
         turret.setTargetAngle(target)
+        turret.update() // dt == 0 -> profiledPosition <- current, motorPower 0
+    }
+
+    private fun tick(dt: Double, current: Double? = null) {
+        if (current != null) applyTurretAngle(current)
+        clock.advance(dt)
         turret.update()
         turret.write()
     }
 
     @Test
-    fun control_positiveErrorDrivesPositivePowerWithStaticTerm() {
-        runControl(target = 10.0, currentTheta = 0.0)
-        // 10*kP + kStatic = 10*0.038 + 0.02 = 0.40
-        assertEquals(0.40, turret.motorPower, 1e-9)
-        assertEquals(0.40, motor.getPower(), 1e-9)
+    fun firstUpdateAfterResetSeedsProfileAndHoldsZeroPower() {
+        prime(current = 15.0, target = 90.0)
+        assertEquals("profile should seed at the measured angle", 15.0, turret.profiledPosition, 1e-9)
+        assertEquals("first tick must not command power", 0.0, turret.motorPower, 1e-9)
     }
 
     @Test
-    fun control_negativeErrorDrivesNegativePower() {
-        runControl(target = -10.0, currentTheta = 0.0)
-        assertEquals(-0.40, turret.motorPower, 1e-9)
-        assertEquals(-0.40, motor.getPower(), 1e-9)
+    fun profiledSetpoint_convergesToTargetWithinVelocityLimit() {
+        prime(current = 0.0, target = 90.0)
+        var maxVel = 0.0
+        var prevPos = turret.profiledPosition
+        repeat(200) {
+            tick(0.02, current = 0.0)
+            assertTrue("profiled setpoint went backwards", turret.profiledPosition >= prevPos - 1e-9)
+            assertTrue("profiled velocity exceeded MAX_VELOCITY", abs(turret.profiledVelocity) <= 700.0 + 1e-6)
+            maxVel = maxOf(maxVel, abs(turret.profiledVelocity))
+            prevPos = turret.profiledPosition
+        }
+        assertEquals("profile did not reach target", 90.0, turret.profiledPosition, 1e-3)
+        assertEquals("profile did not settle to rest", 0.0, turret.profiledVelocity, 1e-3)
+        assertTrue("profile should have accelerated meaningfully", maxVel > 100.0)
     }
 
     @Test
-    fun control_withinToleranceHoldsZeroPower() {
-        runControl(target = 0.1, currentTheta = 0.0) // |error| 0.1 < tolerance 0.2
+    fun positiveTarget_commandsPositivePower_negativeTargetNegative() {
+        prime(current = 0.0, target = 60.0)
+        tick(0.02, current = 0.0)
+        assertTrue("should drive toward a positive target", turret.motorPower > 0.0)
+
+        turret.reset()
+        prime(current = 0.0, target = -60.0)
+        tick(0.02, current = 0.0)
+        assertTrue("should drive toward a negative target", turret.motorPower < 0.0)
+    }
+
+    @Test
+    fun motorPower_isAlwaysClampedToUnitRange() {
+        prime(current = 0.0, target = 90.0)
+        repeat(100) {
+            tick(0.02, current = 0.0) // current pinned far from the advancing setpoint -> saturates
+            assertTrue("motor power escaped [-1,1]", abs(turret.motorPower) <= 1.0)
+        }
+    }
+
+    @Test
+    fun settledOnTarget_commandsZeroPower() {
+        prime(current = 30.0, target = 30.0)
+        repeat(10) { tick(0.02, current = 30.0) }
         assertEquals(0.0, turret.motorPower, 1e-9)
-        assertEquals(0.0, motor.getPower(), 1e-9)
         assertTrue(turret.isAtTarget())
     }
 
     @Test
-    fun control_largeErrorSaturatesToUnitPower() {
-        runControl(target = 200.0, currentTheta = 0.0) // target clips to 90, error huge
-        assertEquals(1.0, turret.motorPower, 1e-9)
-        assertEquals(1.0, motor.getPower(), 1e-9)
-    }
-
-    @Test
-    fun control_smallPowerDeltaBelowThresholdIsNotRewritten() {
-        runControl(target = 10.0, currentTheta = 0.0) // writes 0.40
-        assertEquals(0.40, motor.getPower(), 1e-9)
-
-        // 10.1 -> 0.4038, only 0.0038 above the last write (< POWER_UPDATE_THRESHOLD 0.01): no write.
-        runControl(target = 10.1, currentTheta = 0.0)
-        assertEquals(0.4038, turret.motorPower, 1e-9) // internal target updated
-        assertEquals(0.40, motor.getPower(), 1e-9)    // but the bus write was skipped
-
-        // 20.0 -> 0.78, well over threshold: written.
-        runControl(target = 20.0, currentTheta = 0.0)
-        assertEquals(0.78, motor.getPower(), 1e-9)
+    fun write_pushesCommandedPowerToMotor() {
+        prime(current = 0.0, target = 90.0)
+        tick(0.02, current = 0.0)
+        assertTrue("precondition: some power is being commanded", abs(turret.motorPower) > Turret.POWER_UPDATE_THRESHOLD)
+        assertEquals("write() must push the commanded power to the motor", turret.motorPower, motor.getPower(), 1e-9)
     }
 
     // ---- setTargetAngle clamping ----
@@ -234,20 +281,23 @@ class TurretTest {
     }
 
     @Test
-    fun face_shootOnTheMoveLeadsTheTarget() {
+    fun face_shootOnTheMoveLeadsTheTargetUsingShooterModelSpeed() {
         val target = cartesian(100.0, 0.0)
         val pose = Pose(0.0, 0.0, 0.0)
 
-        // Stationary: aim straight at the goal.
+        // Stationary: aim straight at the goal (lead term vanishes regardless of ball speed).
         turret.face(target, pose, Vector())
         assertEquals(0.0, turret.targetAngle, 1e-6)
         val stationary = turret.targetAngle
 
-        // Moving +y at 90 in/s with SHOOT_SPEED 180: time-of-flight 100/180 s => lead 50 in in -y,
-        // virtual goal (100, -50) => aim atan2(-50, 100) ~= -26.565 deg.
+        // Moving +y: the aim leads the target by robotVelocity * timeOfFlight, and time-of-flight
+        // comes from the shooter's own horizontal exit speed (unified with the launcher).
         turret.face(target, pose, cartesian(0.0, 90.0))
-        val expectedLead = Math.toDegrees(atan2(-50.0, 100.0))
-        assertEquals(expectedLead, turret.targetAngle, 1e-3)
+        val ballSpeed = ShooterModel.horizontalExitSpeedInchesPerSec(100.0)
+        val tof = 100.0 / ballSpeed
+        val virtualGoalY = 0.0 - 90.0 * tof
+        val expectedLead = Math.toDegrees(atan2(virtualGoalY, 100.0))
+        assertEquals(expectedLead, turret.targetAngle, 1e-6)
         assertTrue("moving aim should differ from stationary", abs(turret.targetAngle - stationary) > 1.0)
     }
 }
