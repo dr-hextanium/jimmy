@@ -22,18 +22,6 @@ public class RedClose12 {
     double shotAngle = 51 - 13;
 
     public RedClose12(Follower follower) {
-//        ScorePreloads = follower.pathBuilder().addPath(
-//                        new BezierCurve(
-//                                new Pose(112.000, 136.500),
-//                                new Pose(112.000, 107.000),
-//                                new Pose(102.000, 104.000),
-//                                new Pose(89.000, 88.000)
-//                        )
-//                ).setTangentHeadingInterpolation()
-//                .setReversed()
-//                .setHeadingConstraint(0.05)
-//                .build();
-
         ScorePreloads = follower.pathBuilder().addPath(
                         new BezierCurve(
                                 new Pose(112.000, 136.500),

@@ -42,11 +42,6 @@ class Intake(
     }
 
 	override fun update() {
-//		Robot.telemetry.addData("intake power", power)
-//        Robot.telemetry.addData("gate position", gate.position)
-//        Robot.telemetry.addData("bottomBeamBreak broken", bottomHasArtifact)
-//        Robot.telemetry.addData("middleBeamBreak broken", middleHasArtifact)
-//        Robot.telemetry.addData("topBeamBreak broken", topHasArtifact)
 	}
 
 	override fun write() {

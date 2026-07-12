@@ -13,8 +13,6 @@ import com.qualcomm.robotcore.hardware.DigitalChannelImpl
 import com.qualcomm.robotcore.hardware.Gamepad
 import com.qualcomm.robotcore.hardware.HardwareMap
 import com.qualcomm.robotcore.hardware.Servo
-import com.qualcomm.robotcore.hardware.VoltageSensor
-import com.qualcomm.robotcore.util.ElapsedTime
 import org.firstinspires.ftc.robotcore.external.Telemetry
 import org.firstinspires.ftc.teamcode.hardware.subsystem.Intake
 import org.firstinspires.ftc.teamcode.hardware.subsystem.Launcher
@@ -34,10 +32,6 @@ object Robot : ISubsystem {
 
 	lateinit var gamepad1: GamepadEx
 	lateinit var gamepad2: GamepadEx
-
-	lateinit var voltageSensor: Iterator<VoltageSensor>
-	var voltageTimer = ElapsedTime()
-	var voltage: Double = 0.0
 
 	lateinit var follower: Follower
 
@@ -107,9 +101,6 @@ object Robot : ISubsystem {
 		hubs = hw.getAll(LynxModule::class.java)
 		hubs.forEach { it.bulkCachingMode = LynxModule.BulkCachingMode.MANUAL }
 
-		voltageSensor = hw.voltageSensor.iterator()
-		voltageTimer.reset()
-
 		Robot.gamepad1 = GamepadEx(gamepad1)
 		Robot.gamepad2 = GamepadEx(gamepad2)
 
@@ -129,8 +120,6 @@ object Robot : ISubsystem {
             AnalogDevices.Turret.encoder12Tooth = hw[Names.AnalogDevices.Turret.encoder12Tooth] as AnalogInput
             AnalogDevices.Turret.encoder13Tooth = hw[Names.AnalogDevices.Turret.encoder13Tooth] as AnalogInput
 		}
-
-//		val limelight = hw["limelight"] as Limelight3A
 
         follower = Constants.createFollower(hw)
         follower.setStartingPose(Pose(0.0, 0.0, 0.0))
@@ -158,10 +147,6 @@ object Robot : ISubsystem {
 
 	override fun read() {
 		follower.update()
-
-//		if (voltageTimer.milliseconds() > 100.0 && voltageSensor.hasNext()) {
-//			voltage = voltageSensor.next().voltage
-//		}
 
 		Subsystems.all().forEach { it.read() }
 	}

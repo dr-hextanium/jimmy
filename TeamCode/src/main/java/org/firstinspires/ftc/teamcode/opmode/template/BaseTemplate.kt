@@ -83,11 +83,6 @@ abstract class BaseTemplate(var initialHeading: Double = 0.0) : OpMode() {
             targetPose.xComponent - robotPose.x
         ) // radians
 
-//        val angleToTargetFromCenter = atan2(
-//            robotPose.y - targetPose.xComponent - ,
-//            targetPose.yComponent - robotPose.x
-//        ) // radians
-
         val globalTargetDegrees = angleToTargetFromCenter
         val robotHeadingDegrees = robotPose.heading
 
@@ -111,12 +106,6 @@ abstract class BaseTemplate(var initialHeading: Double = 0.0) : OpMode() {
 		Robot.scheduler.run()
 
         val robotPose = Robot.follower.pose
-
-//        // get the pose to put into this
-//        val angleToTargetFromCenter = atan2(targetGoalPose.yComponent - robotPose.y, targetGoalPose.xComponent - robotPose.x)
-//        val robotAngleDiff = normalizeAngleSigned(angleToTargetFromCenter - robotPose.heading)
-
-//        controller.updateError(robotAngleDiff)
 
         face(targetGoalPose, robotPose)
 

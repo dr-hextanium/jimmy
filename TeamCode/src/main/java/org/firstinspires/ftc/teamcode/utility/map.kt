@@ -31,8 +31,3 @@ fun mapClamped(
 
     return mappedValue.coerceIn(minOut, maxOut)
 }
-
-//fun Double.map(inMin: Double, inMax: Double, outMin: Double, outMax: Double): Double {
-//    if (inMin == inMax) return outMin
-//    return outMin + (this - inMin) * (outMax - outMin) / (inMax - inMin)
-//}

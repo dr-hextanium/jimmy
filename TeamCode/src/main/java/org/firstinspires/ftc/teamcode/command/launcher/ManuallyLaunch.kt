@@ -12,6 +12,5 @@ open class ManuallyLaunch(val scalar: () -> Double) : CommandTemplate() {
 
     }
 
-//    override fun isFinished() = Robot.Subsystems.launcher.isReady
     override fun isFinished() = true
 }

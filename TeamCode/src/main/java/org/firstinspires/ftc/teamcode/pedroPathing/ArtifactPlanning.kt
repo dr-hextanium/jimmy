@@ -44,7 +44,6 @@ fun getPedroPathCode(
                 residuals[i] = hypot(targetX - p2.x, targetY - p2.y)
             }
             org.hipparchus.util.Pair(ArrayRealVector(residuals), Array2DRowRealMatrix(3, 12))
-//            Pair(ArrayRealVector(residuals), Array2DRowRealMatrix(3, 12))
         }
         .build()
 
