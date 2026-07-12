@@ -14,6 +14,13 @@ object Names {
 			const val leftMotor = "sl"
 			const val rightMotor = "sr"
 		}
+
+		object Drivetrain {
+			const val frontRight = "fr"
+			const val frontLeft = "fl"
+			const val backRight = "br"
+			const val backLeft = "bl"
+		}
 	}
 
     object Servos {
