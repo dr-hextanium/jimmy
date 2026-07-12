@@ -203,6 +203,28 @@ class TrapezoidalProfileTest {
         assertTrue("setpoint fell too far behind a slow target", abs(state.position - target) < 5.0)
     }
 
+    @Test
+    fun referenceGovernor_handlesTargetReversalWithinBounds() {
+        // Track toward +90, then flip the target to -90 mid-travel. The plan now starts with a
+        // velocity opposing the new travel direction; it must decelerate, reverse, and converge
+        // without ever breaching the velocity/acceleration limits.
+        val p = TrapezoidalProfile(180.0, 720.0)
+        val dt = 0.02
+        var state = State(0.0, 0.0)
+        repeat(20) { state = p.calculate(dt, state, State(90.0, 0.0)) } // build up +velocity
+        assertTrue("precondition: should be moving toward +target", state.velocity > 10.0)
+
+        repeat(2000) {
+            val next = p.calculate(dt, state, State(-90.0, 0.0))
+            val accel = abs(next.velocity - state.velocity) / dt
+            assertTrue("reversal breached accel limit", accel <= 720.0 + 1.0)
+            assertTrue("reversal breached velocity limit", abs(next.velocity) <= 180.0 + 1e-6)
+            state = next
+        }
+        assertEquals("did not converge after reversal", -90.0, state.position, 1e-3)
+        assertEquals("did not settle to rest after reversal", 0.0, state.velocity, 1e-3)
+    }
+
     // ---- validation ----
 
     @Test(expected = IllegalArgumentException::class)
