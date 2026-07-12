@@ -23,7 +23,9 @@ abstract class BaseTemplate(var initialHeading: Double = 0.0) : OpMode() {
     var controller: PIDFController = PIDFController(PIDFCoefficients(1.2, 0.0, 0.0, 0.0))
 
     var goalLock: Boolean = false
-    var targetGoalPose: Vector = Vector(72.0, 72.0)
+    // Vector(Double, Double) is pedro's POLAR (magnitude, theta) constructor; use Vector(Pose) to
+    // get a cartesian field-center default instead of a point ~(-70, 19).
+    var targetGoalPose: Vector = Vector(Pose(72.0, 72.0))
 
     fun setTargetPose(vector: Vector) { targetGoalPose = vector }
 
