@@ -23,9 +23,6 @@ class BlueClose12 : AutoTemplate(Pose(26.0, 130.0, Math.toRadians(143.0))) {
             return PedroCommand(pathChain, follower)
         }
 
-//        launcher.targetTPSByScalar(powerRegression(distanceToGoal()).coerceIn(POWER_LOWER_BOUND, POWER_UPPER_BOUND))
-//        launcher.targetHoodByScalar(hoodRegression(distanceToGoal()).coerceIn(HOOD_LOWER_BOUND, HOOD_UPPER_BOUND))
-
         SequentialCommandGroup(
             // score preloads
             ParallelCommandGroup(IntakeWithGateClosed(), ManuallyLaunch { 0.65 }, ManualHood { 0.194 }),

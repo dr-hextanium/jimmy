@@ -38,29 +38,24 @@ HTML report: `TeamCode/build/reports/tests/testDebugUnitTest/index.html`.
 This is a **regression / characterization** suite: it pins current behavior so future edits can be
 validated against it. Two rules:
 
-1. **Contracts, not tuning magic numbers.** Empirical values (regression coefficients, PID gains,
-   servo positions, `SCALAR_PER_INCH`, `SHOOT_SPEED`) are asserted only through their *shape*
-   (bounds, monotonicity, clamping) or as clearly-labeled characterization values. If you re-tune a
-   constant on the robot and a characterization test fails, update the test on purpose.
+1. **Contracts, not tuning magic numbers.** Empirical values (control gains, servo positions,
+   `SLIP_EFFICIENCY`, `TARGET_HEIGHT_DELTA_M`, the launcher `kV`/`kS`/`kP` and turret `kP`/`kV`)
+   are asserted only through their *shape* (bounds, monotonicity, clamping) or as clearly-labeled
+   characterization values. If you re-tune a constant on the robot and a characterization test
+   fails, update the test on purpose.
 2. **The CRT/vernier turret decode test proves algebra, not hardware.** `TurretTest` sweeps a
    forward model derived from the tooth counts (137t / 12t / 13t) and checks the decode recovers
    the true angle. It does **not** validate gear-mesh direction or the `ENCODER_*_ZERO_OFFSET_DEG`
    calibration -- those remain on-robot tasks.
+3. **The `control/` physics/controls tests prove math, not calibration.** `ProjectileSolver`,
+   `ShooterModel`, and `TrapezoidalProfile` are pinned by physics invariants (a solved shot passes
+   through the goal, the RK4 integrator collapses onto the closed form at zero aero, the profile
+   stays within its velocity/accel limits). They do **not** validate the on-robot constants
+   (`SLIP_EFFICIENCY`, heights, hood servo calibration, `LAUNCHER_TICKS_PER_REV`), which default to
+   safe placeholders and must be measured on the robot.
 
 ## Observations surfaced while writing these (not changed here)
 
-- `Launcher.distanceToScalar` returns 0 for every input because `SCALAR_PER_INCH`/`BASE_SCALAR` are
-  still `0.0`. `LaunchByDistance` is therefore inert until those are tuned.
-- `Launcher.Regressions` far-field branch (distance > 115) returns the LUT value **without**
-  re-clamping to the near-field `POWER_*`/`HOOD_*` bounds, so long-range outputs intentionally sit
-  outside those bounds.
 - `percentDifference(a, b)` divides by zero when `a + b == 0` (NaN when both are 0). Current callers
-  handle this safely, but the helper itself is unguarded.
-- **Probable bug (latent, currently masked):** `BaseTemplate.targetGoalPose` defaults to
-  `Vector(72.0, 72.0)`, but pedro's `Vector(Double, Double)` constructor is **polar**
-  `(magnitude, theta-radians)` -- so the default aim point is roughly `(-70, 19)`, not the
-  field-center `(72, 72)` that was clearly intended. It's masked today: `DriverControlled` is the
-  only OpMode that turns on `goalLock`, and it calls `setTargetPose(goalPose)` in `initialize()`
-  first, so the bogus default only feeds telemetry and never drives the robot. It becomes a live
-  drivetrain-aiming bug the moment any OpMode engages `goalLock` without first calling
-  `setTargetPose`. Intended-cartesian fix: `Vector(Pose(72.0, 72.0))`.
+  handle this safely (the launcher's write guard treats the resulting NaN as "no change"), but the
+  helper itself is unguarded.
