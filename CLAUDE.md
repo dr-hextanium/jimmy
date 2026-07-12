@@ -44,6 +44,17 @@ This ordering exists so that a given loop iteration never mixes stale and fresh 
 
 `Robot` (`hardware/Robot.kt`) is a singleton object that owns all hardware handles (`Motors`, `Servos`, `DigitalDevices` nested objects), the `Subsystems` registry, the Pedro Pathing `Follower`, and the FTCLib `CommandScheduler`. `Robot.init()` wires hardware map entries (named in `hardware/Names.kt`) to subsystem instances and registers them with the scheduler. `Robot.read()/update()/write()` fan out to every registered subsystem each loop.
 
+### Control primitives (`control/`)
+
+Pure, hardware-free, unit-tested building blocks the subsystems compose in their `update()` phase (kept separate so they're testable on the JVM and shared between subsystems):
+
+- `TrapezoidalProfile` — stateless (position, velocity) trapezoidal motion profile (WPILib-style). The turret runs it as a reference governor (advance the setpoint by `dt` toward the target each loop) so step commands and continuous goal-lock tracking are both slew-limited.
+- `ProjectileSolver` — point-mass ballistics in SI units: closed-form exit-speed solver + minimum-speed angle + time-of-flight, plus an optional (off-by-default) RK4 drag/Magnus integrator that collapses onto the closed form at zero aero. The robot uses only the closed form.
+- `ShooterModel` — `@Configurable` kinematic shooter: turns a field distance into `(targetTPS, hoodServoPosition, launchAngle)` from real drivetrain geometry + `ProjectileSolver`, replacing the old empirical regressions. Shared by the launcher (aim) and the turret (time-of-flight for shoot-on-the-move). On-robot calibration constants (`SLIP_EFFICIENCY`, `TARGET_HEIGHT_DELTA_M`, hood angle/servo calibration, `LAUNCHER_TICKS_PER_REV`) default to safe placeholders — same pattern as the turret's `ENCODER_*_ZERO_OFFSET_DEG`.
+- `TimeSource` — injectable seconds clock (real `System.nanoTime` default; a fake in tests) so profiled/dt-based control is deterministic under test.
+
+The turret (`hardware/subsystem/Turret.kt`) uses a trapezoidal-profiled feedforward+PID law; the launcher (`Launcher.kt`) uses a feedforward-first flywheel velocity loop (`kS + kV·targetTPS + kP·error`, clamped `[0,1]`, never proportional-dominant). Control gains live in each subsystem's `companion object` as labeled on-robot tunables.
+
 ### OpMode templates
 
 - `opmode/template/BaseTemplate.kt` — abstract base for all OpModes. Owns the FTCLib command scheduler tick, gamepad wrappers, loop-time telemetry, and turret/drivetrain goal-lock (`face()`/PIDFController) logic. Subclasses implement `initialize()` (once, in `init()`) and `cycle()` (once per loop, before scheduler run).
