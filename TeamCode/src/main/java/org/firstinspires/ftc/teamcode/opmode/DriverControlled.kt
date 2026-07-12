@@ -37,10 +37,13 @@ open class DriverControlled(val isRed: Boolean, initialHeading: Double) : BaseTe
     var hoodPosition = 0.2
     var servoIncrement = 0.005
 
-    var resetPose = if (Globals.isRed ?: true) Globals.RED_RESET_POSE else Globals.BLUE_RESET_POSE
-    var goalZone = if (Globals.isRed ?: true) Zones.RED_GOAL_ZONE else Zones.BLUE_GOAL_ZONE
-    var goalPose = if (Globals.isRed ?: true) Globals.RED_GOAL_POSE else Globals.BLUE_GOAL_POSE
-    var actualHeadingAtBaseZone = if (Globals.isRed ?: true) 0.0 else PI
+    // Derive from the alliance constructor param, NOT Globals.isRed: these initializers run at
+    // construction, before initialize() sets Globals.isRed (and stop() nulls it), so reading the
+    // global here would always fall through to the RED defaults.
+    var resetPose = if (isRed) Globals.RED_RESET_POSE else Globals.BLUE_RESET_POSE
+    var goalZone = if (isRed) Zones.RED_GOAL_ZONE else Zones.BLUE_GOAL_ZONE
+    var goalPose = if (isRed) Globals.RED_GOAL_POSE else Globals.BLUE_GOAL_POSE
+    var actualHeadingAtBaseZone = if (isRed) 0.0 else PI
 
     fun distanceToGoal(): Double = hypot(goalPose.xComponent - Robot.follower.pose.x, goalPose.yComponent - Robot.follower.pose.y)
 
