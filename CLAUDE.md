@@ -78,6 +78,8 @@ Follower configuration (drivetrain constants, localizer, PIDs) is in `pedroPathi
 ## Conventions
 
 - Motor/servo/sensor hardware-map names are centralized in `Names.kt` — never hardcode a device name string elsewhere.
-- Subsystem tunable constants (positions, power levels, regression coefficients) live in each subsystem's `companion object`.
+- Subsystem tunable constants (positions, power levels, control gains) live in each subsystem's `companion object`.
 - Field positions/poses are in inches using the FTC field coordinate convention (0,0 to 144,144); see `Globals.kt` and `Zones.kt` for reference poses.
-- Commented-out code (e.g. turret subsystem, older regressions) is common in this repo — it's typically disabled-but-kept-for-reference hardware/features (e.g. turret is currently physically absent from the robot), not dead code to clean up. When re-enabling, check `Robot.kt`'s `Subsystems`/`Motors` objects for the matching commented declarations.
+- The turret is a live, physically-present subsystem: its motor, both absolute analog encoders, and its `Subsystems`/`Motors`/`AnalogDevices` entries are all active in `Robot.kt` (it is no longer the commented-out/absent feature older notes described).
+- The codebase was swept of commented-out legacy code (2026-07-12), so a stray commented-out line is now more likely a real leftover than intentional. A few commented lines are kept **on purpose** — leave them: the two `useSecondary*PIDF` toggles in `pedroPathing/Constants.java` (drivetrain-tuning options you enable while tuning) and the dependency-swap note in `build.dependencies.gradle`.
+- Robot-specific calibration/config values (device names, encoder zero-offsets, shooter geometry, control gains, field/auto poses) default to safe placeholders; `TODO.md` at the repo root is the canonical action-ordered checklist of every field to fill for a newly built robot, with `file:line` refs and the debug OpMode that produces each value.
