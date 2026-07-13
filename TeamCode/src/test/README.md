@@ -23,7 +23,7 @@ HTML report: `TeamCode/build/reports/tests/testDebugUnitTest/index.html`.
 ## How it's built
 
 - **No mocking framework.** Hardware is faked by hand in `testfakes/` (`FakeDcMotorEx`,
-  `FakeServo`, `FakeAnalogInput`, `FakeDigitalChannel`). The fakes back only the state the code
+  `FakeServo`, `FakeAnalogInput`). The fakes back only the state the code
   actually uses and `throw NotImplementedError()` for everything else, so an unexpected call fails
   loudly. This keeps the suite robust across JDKs (no byte-buddy/JDK coupling).
 - Subsystems that read `Robot.telemetry` are given an empty `MultipleTelemetry()`; command tests

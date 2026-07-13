@@ -33,11 +33,8 @@ DcMotor | Drive back-right | `br` | `Names.kt:21` / `Constants.java:36`
 DcMotor | Drive back-left | `bl` | `Names.kt:22` / `Constants.java:37`
 Servo | Intake gate | `gate` | `Names.kt:28`
 Servo | Launcher hood | `hood` | `Names.kt:32`
-Digital device | Bottom beam-break | `bbb` | `Names.kt:38`
-Digital device | Middle beam-break | `mbb` | `Names.kt:39`
-Digital device | Top beam-break | `tbb` | `Names.kt:40`
-Analog input | Turret 12T encoder | `te12` | `Names.kt:46`
-Analog input | Turret 13T encoder | `te13` | `Names.kt:47`
+Analog input | Turret 12T encoder | `te12` | `Names.kt:38`
+Analog input | Turret 13T encoder | `te13` | `Names.kt:39`
 I2C (Pinpoint) | Odometry computer | `pinpoint` | `Constants.java:48`
 
 - [ ] Every device above exists in the Control Hub config with the matching name and port.
@@ -72,7 +69,7 @@ Current: `right=REVERSE, left=FORWARD`. Both must spin the single flywheel the *
 ### Turret motor — `hardware/subsystem/Turret.kt:76` (`FORWARD`) + gear-mesh sign, see §3.
 
 ### Intake motor — `hardware/subsystem/Intake.kt:27` (`REVERSE`)
-- [ ] Run **"Intake + Beam Break Debug"** (right trigger = in) and confirm it pulls artifacts *in*.
+- [ ] Run **"Intake Debug"** (right trigger = in) and confirm it pulls artifacts *in*.
 
 ---
 
@@ -206,9 +203,9 @@ Autonomous start poses:
 ## 6. Final sanity pass
 
 - [ ] **"Robot Status Debug"** with the robot on the field: pose, distance-to-goal, turret fused
-      angle, launcher TPS/at-speed, beam-breaks, hood/gate positions all read sane.
-- [ ] **"Intake + Beam Break Debug"**: each beam-break flips "artifact present" only when actually
-      blocked (verify wiring/polarity of `bbb`/`mbb`/`tbb`).
+      angle, launcher TPS/at-speed, hood/gate positions all read sane.
+- [ ] **"Intake Debug"**: intake pulls artifacts in on the right trigger, ejects on the left, and
+      the gate opens/closes (verify motor direction and gate travel).
 - [ ] Full JVM test suite still green: `./gradlew :TeamCode:testDebugUnitTest` (JDK 17–21 / the
       embedded JBR — **not** the default JDK 24).
 

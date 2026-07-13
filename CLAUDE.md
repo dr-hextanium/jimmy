@@ -10,6 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Hard Rules
 - Always run tests before reporting a task as complete
+- update TODO.md when making a change to the robot that will require a change in setup.
 
 ## What this is
 
@@ -42,7 +43,7 @@ Every subsystem (`hardware/subsystem/*.kt`) and `Robot` itself implements `ISubs
 
 This ordering exists so that a given loop iteration never mixes stale and fresh hardware state. When adding subsystem logic, put it in the correct phase — don't read hardware inside `update()`/`write()`, and don't compute non-trivial logic inside `read()`/`write()`.
 
-`Robot` (`hardware/Robot.kt`) is a singleton object that owns all hardware handles (`Motors`, `Servos`, `DigitalDevices` nested objects), the `Subsystems` registry, the Pedro Pathing `Follower`, and the FTCLib `CommandScheduler`. `Robot.init()` wires hardware map entries (named in `hardware/Names.kt`) to subsystem instances and registers them with the scheduler. `Robot.read()/update()/write()` fan out to every registered subsystem each loop.
+`Robot` (`hardware/Robot.kt`) is a singleton object that owns all hardware handles (`Motors`, `Servos`, `AnalogDevices` nested objects), the `Subsystems` registry, the Pedro Pathing `Follower`, and the FTCLib `CommandScheduler`. `Robot.init()` wires hardware map entries (named in `hardware/Names.kt`) to subsystem instances and registers them with the scheduler. `Robot.read()/update()/write()` fan out to every registered subsystem each loop.
 
 ### Control primitives (`control/`)
 

@@ -6,22 +6,13 @@ import com.qualcomm.robotcore.hardware.DcMotorEx
 import com.qualcomm.robotcore.hardware.DcMotorSimple.Direction.REVERSE
 import com.qualcomm.robotcore.hardware.Servo
 import org.firstinspires.ftc.teamcode.hardware.ISubsystem
-import org.firstinspires.ftc.teamcode.hardware.wrapper.BeamBreak
 
 class Intake(
     val motor: DcMotorEx,
     val gate: Servo,
-
-    val bottomBeamBreak: BeamBreak,
-    val middleBeamBreak: BeamBreak,
-    val topBeamBreak: BeamBreak,
 ) : ISubsystem {
     var gateOpened = false
 	var power = 0.0
-
-    var bottomHasArtifact = false
-    var middleHasArtifact = false
-    var topHasArtifact = false
 
 	override fun reset() {
 		motor.direction = REVERSE
@@ -36,9 +27,6 @@ class Intake(
     fun closeGate() { gateOpened = false }
 
 	override fun read() {
-        bottomHasArtifact = bottomBeamBreak.broken()
-        middleHasArtifact = middleBeamBreak.broken()
-        topHasArtifact = topBeamBreak.broken()
     }
 
 	override fun update() {

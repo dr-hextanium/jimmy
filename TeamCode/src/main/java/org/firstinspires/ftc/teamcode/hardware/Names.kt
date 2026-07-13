@@ -33,14 +33,6 @@ object Names {
         }
     }
 
-    object DigitalDevices {
-        object Intake {
-            const val bottomBeamBreak = "bbb"
-            const val middleBeamBreak = "mbb"
-            const val topBeamBreak = "tbb"
-        }
-    }
-
     object AnalogDevices {
         object Turret {
             const val encoder12Tooth = "te12"

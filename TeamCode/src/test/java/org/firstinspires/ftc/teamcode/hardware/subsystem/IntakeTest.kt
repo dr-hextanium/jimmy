@@ -2,71 +2,26 @@ package org.firstinspires.ftc.teamcode.hardware.subsystem
 
 import com.qualcomm.robotcore.hardware.DcMotor
 import com.qualcomm.robotcore.hardware.DcMotorSimple
-import org.firstinspires.ftc.teamcode.hardware.wrapper.BeamBreak
 import org.firstinspires.ftc.teamcode.testfakes.FakeDcMotorEx
-import org.firstinspires.ftc.teamcode.testfakes.FakeDigitalChannel
 import org.firstinspires.ftc.teamcode.testfakes.FakeServo
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
 /**
- * Tests for the Intake subsystem: beam-break -> artifact-present sensing in read(), the gate servo
- * open/close output in write(), motor power passthrough, and reset() configuration.
+ * Tests for the Intake subsystem: the gate servo open/close output in write(), motor power
+ * passthrough, and reset() configuration.
  */
 class IntakeTest {
     private lateinit var motor: FakeDcMotorEx
     private lateinit var gate: FakeServo
-    private lateinit var bottomCh: FakeDigitalChannel
-    private lateinit var middleCh: FakeDigitalChannel
-    private lateinit var topCh: FakeDigitalChannel
     private lateinit var intake: Intake
 
     @Before
     fun setUp() {
         motor = FakeDcMotorEx()
         gate = FakeServo()
-        bottomCh = FakeDigitalChannel(fakeState = true)
-        middleCh = FakeDigitalChannel(fakeState = true)
-        topCh = FakeDigitalChannel(fakeState = true)
-        intake = Intake(
-            motor,
-            gate,
-            BeamBreak(bottomCh),
-            BeamBreak(middleCh),
-            BeamBreak(topCh),
-        )
-    }
-
-    // ---- read(): beam breaks -> artifact flags ----
-
-    @Test
-    fun read_mapsBrokenBeamsToArtifactPresent() {
-        // broken beam (state LOW) => artifact present
-        bottomCh.fakeState = false // broken -> artifact
-        middleCh.fakeState = true  // intact -> empty
-        topCh.fakeState = false    // broken -> artifact
-
-        intake.read()
-
-        assertTrue(intake.bottomHasArtifact)
-        assertFalse(intake.middleHasArtifact)
-        assertTrue(intake.topHasArtifact)
-    }
-
-    @Test
-    fun read_allIntactMeansNoArtifacts() {
-        bottomCh.fakeState = true
-        middleCh.fakeState = true
-        topCh.fakeState = true
-
-        intake.read()
-
-        assertFalse(intake.bottomHasArtifact)
-        assertFalse(intake.middleHasArtifact)
-        assertFalse(intake.topHasArtifact)
+        intake = Intake(motor, gate)
     }
 
     // ---- gate open/close via write() ----

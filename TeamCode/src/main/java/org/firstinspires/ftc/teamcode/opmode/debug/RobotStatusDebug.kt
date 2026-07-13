@@ -10,8 +10,8 @@ import kotlin.math.hypot
 
 /**
  * Read-only whole-robot status dashboard for a quick pre-match / configuration health check:
- * pose, distance to each goal, turret fused angle, launcher velocities + at-speed, intake
- * beam-breaks, and hood/gate positions.
+ * pose, distance to each goal, turret fused angle, launcher velocities + at-speed, and hood/gate
+ * positions.
  *
  * Low risk: after init it only calls Robot.read() (localizer + sensor reads); it never calls
  * Robot.update()/write(), so no motor or servo is driven from the loop.
@@ -41,12 +41,6 @@ class RobotStatusDebug : OpMode() {
         telemetry.addData("right vel (tps)", "%.0f", Robot.Motors.Launcher.rightMotor.velocity)
         telemetry.addData("avg tps", "%.0f", Robot.Subsystems.launcher.averageTPS)
         telemetry.addData("at speed?", Robot.Subsystems.launcher.isReady)
-
-        telemetry.addLine("--- intake ---")
-        telemetry.addData(
-            "beam breaks b/m/t",
-            "${Robot.Subsystems.intake.bottomHasArtifact}/${Robot.Subsystems.intake.middleHasArtifact}/${Robot.Subsystems.intake.topHasArtifact}"
-        )
 
         telemetry.addLine("--- servos ---")
         telemetry.addData("hood pos", "%.3f", Robot.Servos.Launcher.hood.position)

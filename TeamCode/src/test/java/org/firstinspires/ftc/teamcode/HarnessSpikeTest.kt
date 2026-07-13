@@ -3,17 +3,12 @@ package org.firstinspires.ftc.teamcode
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry
 import com.qualcomm.robotcore.hardware.DcMotor
 import com.qualcomm.robotcore.hardware.DcMotorSimple
-import com.qualcomm.robotcore.hardware.DigitalChannel
 import com.qualcomm.robotcore.util.Range
 import org.firstinspires.ftc.teamcode.hardware.Robot
-import org.firstinspires.ftc.teamcode.hardware.wrapper.BeamBreak
 import org.firstinspires.ftc.teamcode.testfakes.FakeAnalogInput
 import org.firstinspires.ftc.teamcode.testfakes.FakeDcMotorEx
-import org.firstinspires.ftc.teamcode.testfakes.FakeDigitalChannel
 import org.firstinspires.ftc.teamcode.testfakes.FakeServo
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -69,22 +64,6 @@ class HarnessSpikeTest {
         assertEquals(1.65, a.voltage, 0.0)
         a.fakeVoltage = 3.3
         assertEquals(3.3, a.voltage, 0.0)
-    }
-
-    @Test
-    fun fakeDigitalChannelAndBeamBreak() {
-        val ch = FakeDigitalChannel(fakeState = true)
-        // BeamBreak's constructor sets the channel to INPUT mode; make sure that path works.
-        val beam = BeamBreak(ch)
-        assertEquals(DigitalChannel.Mode.INPUT, ch.fakeMode)
-
-        // broken() == !state, intact() == state
-        assertFalse(beam.broken())
-        assertTrue(beam.intact())
-
-        ch.fakeState = false
-        assertTrue(beam.broken())
-        assertFalse(beam.intact())
     }
 
     @Test

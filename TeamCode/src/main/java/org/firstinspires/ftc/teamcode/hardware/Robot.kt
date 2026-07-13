@@ -9,7 +9,6 @@ import com.pedropathing.geometry.Pose
 import com.qualcomm.hardware.lynx.LynxModule
 import com.qualcomm.robotcore.hardware.AnalogInput
 import com.qualcomm.robotcore.hardware.DcMotorEx
-import com.qualcomm.robotcore.hardware.DigitalChannelImpl
 import com.qualcomm.robotcore.hardware.Gamepad
 import com.qualcomm.robotcore.hardware.HardwareMap
 import com.qualcomm.robotcore.hardware.Servo
@@ -17,7 +16,6 @@ import org.firstinspires.ftc.robotcore.external.Telemetry
 import org.firstinspires.ftc.teamcode.hardware.subsystem.Intake
 import org.firstinspires.ftc.teamcode.hardware.subsystem.Launcher
 import org.firstinspires.ftc.teamcode.hardware.subsystem.Turret
-import org.firstinspires.ftc.teamcode.hardware.wrapper.BeamBreak
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants
 
 
@@ -77,14 +75,6 @@ object Robot : ISubsystem {
         )
     }
 
-    object DigitalDevices {
-        object Intake {
-            lateinit var bottomBeamBreak: BeamBreak
-            lateinit var middleBeamBreak: BeamBreak
-            lateinit var topBeamBreak: BeamBreak
-        }
-    }
-
     object AnalogDevices {
         object Turret {
             lateinit var encoder12Tooth: AnalogInput
@@ -113,10 +103,6 @@ object Robot : ISubsystem {
             Servos.Intake.gate = hw[Names.Servos.Intake.servo] as Servo
             Servos.Launcher.hood = hw[Names.Servos.Launcher.servo] as Servo
 
-            DigitalDevices.Intake.bottomBeamBreak = BeamBreak(hw.digitalChannel[Names.DigitalDevices.Intake.bottomBeamBreak] as DigitalChannelImpl)
-            DigitalDevices.Intake.middleBeamBreak = BeamBreak(hw.digitalChannel[Names.DigitalDevices.Intake.middleBeamBreak] as DigitalChannelImpl)
-            DigitalDevices.Intake.topBeamBreak = BeamBreak(hw.digitalChannel[Names.DigitalDevices.Intake.topBeamBreak] as DigitalChannelImpl)
-
             AnalogDevices.Turret.encoder12Tooth = hw[Names.AnalogDevices.Turret.encoder12Tooth] as AnalogInput
             AnalogDevices.Turret.encoder13Tooth = hw[Names.AnalogDevices.Turret.encoder13Tooth] as AnalogInput
 		}
@@ -128,9 +114,6 @@ object Robot : ISubsystem {
 		Subsystems.intake = Intake(
             Motors.Intake.motor,
             Servos.Intake.gate,
-            DigitalDevices.Intake.bottomBeamBreak,
-            DigitalDevices.Intake.middleBeamBreak,
-            DigitalDevices.Intake.topBeamBreak
         )
 		Subsystems.turret = Turret(Motors.Turret.motor, AnalogDevices.Turret.encoder12Tooth, AnalogDevices.Turret.encoder13Tooth)
 		Subsystems.launcher = Launcher(Motors.Launcher.leftMotor, Motors.Launcher.rightMotor, Servos.Launcher.hood)

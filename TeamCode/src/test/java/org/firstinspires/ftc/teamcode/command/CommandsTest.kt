@@ -20,10 +20,8 @@ import org.firstinspires.ftc.teamcode.hardware.Robot
 import org.firstinspires.ftc.teamcode.hardware.subsystem.Intake
 import org.firstinspires.ftc.teamcode.hardware.subsystem.Launcher
 import org.firstinspires.ftc.teamcode.hardware.subsystem.Turret
-import org.firstinspires.ftc.teamcode.hardware.wrapper.BeamBreak
 import org.firstinspires.ftc.teamcode.testfakes.FakeAnalogInput
 import org.firstinspires.ftc.teamcode.testfakes.FakeDcMotorEx
-import org.firstinspires.ftc.teamcode.testfakes.FakeDigitalChannel
 import org.firstinspires.ftc.teamcode.testfakes.FakeServo
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -62,9 +60,6 @@ class CommandsTest {
         intake = Intake(
             FakeDcMotorEx(),
             FakeServo(),
-            BeamBreak(FakeDigitalChannel()),
-            BeamBreak(FakeDigitalChannel()),
-            BeamBreak(FakeDigitalChannel()),
         )
         launcher = Launcher(FakeDcMotorEx(), FakeDcMotorEx(), FakeServo())
         turret = Turret(FakeDcMotorEx(), FakeAnalogInput(), FakeAnalogInput())
