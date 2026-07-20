@@ -90,6 +90,8 @@ class TurretEncoderDebug : OpMode() {
     }
 
     companion object {
-        private const val JOG_POWER = 0.2
+        // Just above the turret's ~0.30 breakaway friction: enough to move it for zeroing, but slow
+        // for fine positioning near the mechanical zero / hard stops.
+        private const val JOG_POWER = 0.35
     }
 }

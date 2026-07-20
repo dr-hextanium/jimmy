@@ -424,11 +424,13 @@ class TurretAutoTune : OpMode() {
     }
 
     companion object {
-        // Manual centring jog (SETUP), dead-man via triggers.
-        private const val JOG_POWER = 0.2
+        // Manual centring jog (SETUP), dead-man via triggers. Above the ~0.30 breakaway friction so
+        // the turret actually jogs.
+        private const val JOG_POWER = 0.40
 
-        // Sign probe.
-        private const val SIGN_PROBE_POWER = 0.16
+        // Sign probe. Must clear the ~0.30 breakaway friction, else the turret never moves and the
+        // probe times out (the failure this value is sized against).
+        private const val SIGN_PROBE_POWER = 0.40
         private const val SIGN_PROBE_MIN_DEG = 4.0
         private const val SIGN_PROBE_TIMEOUT = 1.5
 
@@ -439,23 +441,28 @@ class TurretAutoTune : OpMode() {
         private const val RECORD_BAND_DEG = 45.0
         private const val DYN_START_EDGE_DEG = 55.0
 
-        // Quasistatic sweep. Modest powers only: at higher power the terminal velocity crosses the
-        // limited travel too fast to settle; the dynamic step covers the high-accel regime instead.
-        // Span from likely-below-breakaway up: low levels give clean low-velocity points; if some
-        // stall out (high stiction) the level timeout skips them, and the higher levels still anchor
-        // the slope. Powers above ~0.26 cross the limited travel too fast to settle -- the dynamic
-        // step covers the high regime instead.
-        private val QUASISTATIC_POWERS = doubleArrayOf(0.09, 0.12, 0.15, 0.18, 0.22, 0.26)
+        // Quasistatic sweep, TRANSLATED up by the ~0.30 breakaway friction (NOT widened): each level
+        // sits just above breakaway, so net-of-friction power stays in the original ~0.04-0.24 band and
+        // the terminal-velocity spread (~30-180 deg/s) matches what the +/-55 reversal / 70 deg hard
+        // limit / ~90 deg physical-stop margins were sized for. A level below breakaway yields no motion
+        // (skipped on the level timeout; a sweep entirely below breakaway fails the fit). Going much
+        // higher than ~0.54 is unsafe here: terminal velocity crosses the bounded travel too fast, and
+        // the reversal overshoot + coast can reach the hard stop (slamming the idler encoder gears) given
+        // any centering error -- the dynamic step covers the high-accel regime instead.
+        private val QUASISTATIC_POWERS = doubleArrayOf(0.34, 0.38, 0.42, 0.46, 0.50, 0.54)
         private const val TRAVERSES_PER_POWER = 4 // reversals per power (~2 each direction)
         private const val REVERSAL_BLANK_S = 0.25 // skip accel + backlash right after a reversal
         private const val ACCEL_GATE_DEG_S2 = 300.0 // record only when |accel| below this (settled)
         private const val MIN_RECORD_SPEED_DEG_S = 8.0
         // Give up on a power level if it produces no reversal within this long (below breakaway, or
-        // a jam) and move to the next -- must exceed the ping-pong half-period at the slowest power.
-        private const val QUASISTATIC_LEVEL_TIMEOUT = 3.5
+        // a jam) and move to the next -- must exceed one full traverse at the slowest power. At the
+        // ~0.34 low level (~30 deg/s just above the 0.30 breakaway) a 110 deg edge-to-edge traverse is
+        // ~3.7 s, so this sits above that.
+        private const val QUASISTATIC_LEVEL_TIMEOUT = 5.0
 
-        // Dynamic steps.
-        private const val REPO_POWER = 0.18
+        // Dynamic steps. Reposition power is above the ~0.30 breakaway so the turret can crawl to the
+        // start edge; the from-rest step powers below already clear it comfortably.
+        private const val REPO_POWER = 0.40
         private const val REPO_TOL_DEG = 4.0
         private const val REPO_TIMEOUT = 3.0        // abort if a start edge is unreachable (jam/disconnect)
         private const val SETTLE_SPEED_DEG_S = 10.0
