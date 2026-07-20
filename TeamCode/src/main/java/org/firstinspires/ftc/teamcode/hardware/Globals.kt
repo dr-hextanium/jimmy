@@ -28,4 +28,14 @@ object Globals {
 
     @JvmField
     val RED_RESET_POSE = Pose(117.0, 131.5, Math.toRadians(37.0))
+
+    // Base-zone relocalization poses: where the robot physically sits, and the field-frame heading it
+    // faces, when placed in its own base zone. x/y mirror the base-zone reference points in Zones.kt;
+    // heading is the base-zone facing (RED faces +x = 0, BLUE faces -x = 180deg). The LEFT_STICK
+    // relocalize snaps the localizer here. CONFIRM x/y/heading against the real field (TODO.md).
+    @JvmField
+    val RED_BASE_POSE = Pose(38.5, 33.5, 0.0)
+
+    @JvmField
+    val BLUE_BASE_POSE = Pose(105.5, 33.5, Math.toRadians(180.0))
 }

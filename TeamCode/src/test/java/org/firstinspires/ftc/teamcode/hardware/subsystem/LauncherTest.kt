@@ -248,6 +248,7 @@ class LauncherTest {
         right.setDirection(DcMotorSimple.Direction.FORWARD)
         launcher.targetTPS = 1234.0
         launcher.currentPower = 0.9
+        launcher.targetHoodPosition = 0.5
 
         launcher.reset()
 
@@ -262,5 +263,18 @@ class LauncherTest {
         assertEquals(Launcher.HOOD_HIGH, hood.getPosition(), 1e-9)
         assertEquals(0.0, launcher.targetTPS, 1e-9)
         assertEquals(0.0, launcher.currentPower, 1e-9)
+        // reset() must also seed the hood *target* to HOOD_HIGH, or the next write() clobbers it.
+        assertEquals(Launcher.HOOD_HIGH, launcher.targetHoodPosition, 1e-9)
+    }
+
+    @Test
+    fun reset_thenWrite_holdsHoodAtHigh_notZero() {
+        // Regression: targetHoodPosition defaulted to 0.0 and was not reset, so the first write()
+        // after reset() drove the hood to 0.0 -- below HOOD_HIGH (the usable-travel low end) --
+        // until the driver first moved it in TeleOp. reset() must leave write() parking at HOOD_HIGH.
+        launcher.targetHoodPosition = 0.0 // simulate the old default
+        launcher.reset()
+        launcher.write()
+        assertEquals(Launcher.HOOD_HIGH, hood.getPosition(), 1e-9)
     }
 }

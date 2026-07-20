@@ -72,6 +72,10 @@ class Launcher(val left: DcMotorEx, val right: DcMotorEx, val hood: Servo) : ISu
     override fun reset() {
         targetTPS = 0.0
         currentPower = 0.0
+        // Seed the hood target to match the position reset() parks the servo at (below), otherwise
+        // the first write() drives the hood to targetHoodPosition's 0.0 default -- past HOOD_HIGH,
+        // the low end of the usable travel -- until the driver first moves it in TeleOp.
+        targetHoodPosition = HOOD_HIGH
 
         right.direction = REVERSE
         left.direction = DcMotorSimple.Direction.FORWARD

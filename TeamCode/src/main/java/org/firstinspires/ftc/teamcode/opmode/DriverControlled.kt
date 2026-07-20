@@ -40,10 +40,9 @@ open class DriverControlled(val isRed: Boolean, initialHeading: Double) : BaseTe
     // Derive from the alliance constructor param, NOT Globals.isRed: these initializers run at
     // construction, before initialize() sets Globals.isRed (and stop() nulls it), so reading the
     // global here would always fall through to the RED defaults.
-    var resetPose = if (isRed) Globals.RED_RESET_POSE else Globals.BLUE_RESET_POSE
+    var baseZonePose = if (isRed) Globals.RED_BASE_POSE else Globals.BLUE_BASE_POSE
     var goalZone = if (isRed) Zones.RED_GOAL_ZONE else Zones.BLUE_GOAL_ZONE
     var goalPose = if (isRed) Globals.RED_GOAL_POSE else Globals.BLUE_GOAL_POSE
-    var actualHeadingAtBaseZone = if (isRed) 0.0 else PI
 
     fun distanceToGoal(): Double = hypot(goalPose.xComponent - Robot.follower.pose.x, goalPose.yComponent - Robot.follower.pose.y)
 
@@ -72,16 +71,19 @@ open class DriverControlled(val isRed: Boolean, initialHeading: Double) : BaseTe
             .whenActive(OpenGate())
             .whenInactive(CloseGate())
 
+        // RIGHT stick button = HEADING reset: zero the field-centric heading offset to the current
+        // facing, so "up" on the drive stick means the way the robot is pointing right now.
         GamepadButton(primary, GamepadKeys.Button.RIGHT_STICK_BUTTON)
             .whenPressed(InstantCommand({ Globals.globalHeadingOffset = Robot.follower.pose.heading }))
 
+        // LEFT stick button = POSITION relocalize to the base zone: snap the localizer to the base-
+        // zone pose (its known x/y and the heading the robot faces there) and clear the heading
+        // offset so field-centric drive is referenced to the field frame again.
         GamepadButton(primary, GamepadKeys.Button.LEFT_STICK_BUTTON)
             .whenPressed(
                 InstantCommand({
-                    Robot.pose.heading = actualHeadingAtBaseZone
                     Globals.globalHeadingOffset = 0.0
-
-                    Robot.follower.pose = resetPose
+                    Robot.follower.pose = baseZonePose
                 })
             )
 
