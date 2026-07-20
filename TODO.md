@@ -193,8 +193,27 @@ manual-aim path and the kinematic-aim path will silently disagree:
 Safe starting gains are in place; tune for performance once directions + calibration are done.
 
 ### Turret feedforward + PID — `Turret.kt:463-475`
+**Automated (recommended): run "Turret Auto-Tune"** (`opmode/debug/TurretAutoTune.kt`). It
+characterizes the plant open-loop (SysId-style) and prints ready-to-paste `kStatic`, `kV`, `kA`,
+`kP`, `kD` — no hand-tuning. Procedure:
+- [ ] Jog the turret to its mechanical **centre** by eye (triggers, capped, dead-man), press **A**.
+- [ ] **Hold RIGHT BUMPER** to run (release / press **B** stops instantly). It sign-probes, then
+      ping-pongs a steady-state sweep, then runs from-rest dynamic steps. A hard motor-tick limit
+      (`HARD_LIMIT_DEG = 70`, from the centred start) is an independent backstop — centre carefully so
+      the ±70° band stays inside the real ±90° travel.
+- [ ] At **DONE**, copy the five gains into the companion, or press **Y** to push them live to the
+      dashboard first and test-drive. It only uses the drive-motor encoder, so it works **before** the
+      absolute-encoder calibration in §3 is finished.
+- [ ] `kD` is applied live only when `USE_MOTOR_FUSION` is on (the tune uses the clean motor tach; the
+      absolute-only path's `measuredVelocity` is noisier, so the shipped `kD=0` is kept otherwise).
+- [ ] Watch the printed diagnostics: a large `kStatic +/-` asymmetry flags a mechanical bind; low fit
+      R² or a low `min battery (V)` means rerun. Adjust `SETTLING_TIME_S` (default `0.2`s) for a
+      stiffer/softer loop and rerun.
+
+**Manual fallback** (if you'd rather tune by hand):
 - [ ] `MAX_VELOCITY` (`700.0` deg/s), `MAX_ACCELERATION` (`3600.0` deg/s²) — motion-profile limits.
-      Start conservative, raise until it tracks without stalling/overshoot.
+      Start conservative, raise until it tracks without stalling/overshoot. (Auto-Tune does **not**
+      set these — they cap the profile, not the plant model.)
 - [ ] `kV` (`0.0012` ≈ 1/MAX_VELOCITY), `kA` (`0.0`), `kP` (`0.038`), `kStatic` (`0.02`). Tune
       feedforward (`kV`, then `kStatic`) first, then trim with `kP`.
 - [ ] `kD` (`0.0`) — velocity error damping. It was off because the raw encoder was too noisy to

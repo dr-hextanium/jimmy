@@ -419,7 +419,9 @@ class Turret(
         // 137t turret gear driven by a 15t motor pinion.
         private const val TURRET_GEAR_RATIO = 137.0 / 15.0
         private const val TICKS_PER_TURRET_REV = MOTOR_TICKS_PER_REV * TURRET_GEAR_RATIO
-        private const val DEG_PER_TICK = 360.0 / TICKS_PER_TURRET_REV // ~0.272 deg/turret-tick
+        // Public so the TurretAutoTune characterization OpMode shares this exact conversion (its
+        // motor-tick safety limit and velocity readings must match the live subsystem's geometry).
+        const val DEG_PER_TICK = 360.0 / TICKS_PER_TURRET_REV // ~0.272 deg/turret-tick
 
         // Absolute analog position encoders (Melonbotics, 0-3.3V per revolution).
         const val ENCODER_MAX_VOLTAGE = 3.3
