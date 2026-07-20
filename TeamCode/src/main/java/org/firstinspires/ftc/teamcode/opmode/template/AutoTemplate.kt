@@ -18,10 +18,11 @@ open class AutoTemplate(val start: Pose) : BaseTemplate() {
     }
 
     override fun cycle() {
-        follower.update()
-
-        telemetry.addData("x", follower.pose.x)
-        telemetry.addData("y", follower.pose.y)
-        telemetry.addData("heading", follower.pose.heading)
+        // The follower is advanced once per loop in Robot.read(); don't update() it again here.
+        if (Globals.DEBUG_TELEMETRY) {
+            telemetry.addData("x", follower.pose.x)
+            telemetry.addData("y", follower.pose.y)
+            telemetry.addData("heading", follower.pose.heading)
+        }
     }
 }

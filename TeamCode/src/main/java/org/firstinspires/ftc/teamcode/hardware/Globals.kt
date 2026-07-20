@@ -9,6 +9,13 @@ object Globals {
     @JvmField
 	var AUTO = false
 
+    // Diagnostic telemetry + FTC Dashboard/Panels sink. OFF for matches (the dashboard sink makes
+    // every addData a network-serialize cost, and the diagnostic lines add per-loop work). Turn ON
+    // from the dashboard BEFORE init to wire the dashboard sink back in and stream the debug lines.
+    // The loop-time meter is always shown regardless of this flag.
+    @JvmField
+    var DEBUG_TELEMETRY = false
+
     @JvmField
     var AUTO_RECOVERY_POSITION: Pose? = null
 

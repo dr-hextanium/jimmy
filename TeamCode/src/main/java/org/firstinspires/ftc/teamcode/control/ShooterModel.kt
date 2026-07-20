@@ -105,17 +105,34 @@ object ShooterModel {
         val reachable: Boolean,
     )
 
+    /**
+     * The clamp/unreachable rule in ONE place (shared by [aim] and [horizontalExitSpeedInchesPerSec]
+     * so they can't drift): turn a required exit speed (m/s; NaN when the geometry has no solution)
+     * into a flywheel target in [0, MAX_TPS]. NaN -> MAX_TPS (best clamped effort). [perTps] is passed
+     * in so the caller computes [exitSpeedPerTps] only once.
+     */
+    private fun targetTpsFromRequiredSpeed(requiredSpeed: Double, perTps: Double): Double {
+        val requiredTps = if (requiredSpeed.isNaN()) Double.NaN else requiredSpeed / perTps
+        return if (requiredTps.isNaN()) MAX_TPS else requiredTps.coerceIn(0.0, MAX_TPS)
+    }
+
     /** Solve the shooting solution for a target at [distanceInches] downrange. */
     fun aim(distanceInches: Double): AimingSolution {
         val d = distanceInches * INCHES_TO_METERS
         val theta = launchAngleForDistance(distanceInches)
+        val perTps = exitSpeedPerTps()
         val requiredSpeed = ProjectileSolver.solveExitSpeed(d, TARGET_HEIGHT_DELTA_M, theta)
 
-        val requiredTps = if (requiredSpeed.isNaN()) Double.NaN else tpsForExitSpeed(requiredSpeed)
+        // Pre-clamp required TPS only for the reachable flag; the clamped target comes from the shared rule.
+        val requiredTps = if (requiredSpeed.isNaN()) Double.NaN else requiredSpeed / perTps
         val reachable = !requiredTps.isNaN() && requiredTps <= MAX_TPS
 
-        val targetTps = if (requiredTps.isNaN()) MAX_TPS else requiredTps.coerceIn(0.0, MAX_TPS)
-        return AimingSolution(targetTps, angleToServo(theta), theta, reachable)
+        return AimingSolution(
+            targetTpsFromRequiredSpeed(requiredSpeed, perTps),
+            angleToServo(theta),
+            theta,
+            reachable,
+        )
     }
 
     /**
@@ -124,8 +141,14 @@ object ShooterModel {
      * `distance / horizontalExitSpeed`). Reflects the *achievable* (clamped) flywheel speed.
      */
     fun horizontalExitSpeedInchesPerSec(distanceInches: Double): Double {
-        val sol = aim(distanceInches)
-        val v = exitSpeedFromTps(sol.targetTps)
-        return ProjectileSolver.horizontalSpeed(v, sol.launchAngleRad) / INCHES_TO_METERS
+        // Hot path (turret goal-lock, every loop): compute directly so we don't allocate an
+        // AimingSolution and don't evaluate exitSpeedPerTps() twice. Bit-identical to
+        // exitSpeedFromTps(aim(distanceInches).targetTps) with the same launch angle.
+        val d = distanceInches * INCHES_TO_METERS
+        val theta = launchAngleForDistance(distanceInches)
+        val perTps = exitSpeedPerTps()
+        val requiredSpeed = ProjectileSolver.solveExitSpeed(d, TARGET_HEIGHT_DELTA_M, theta)
+        val v = perTps * targetTpsFromRequiredSpeed(requiredSpeed, perTps) // = exitSpeedFromTps(targetTps)
+        return ProjectileSolver.horizontalSpeed(v, theta) / INCHES_TO_METERS
     }
 }

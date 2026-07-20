@@ -41,7 +41,14 @@ object Robot : ISubsystem {
 		lateinit var turret: Turret
 		lateinit var launcher: Launcher
 
-		fun all() = listOf(intake, turret, launcher)
+		// Cached fan-out list so the per-loop read/update/write (all() runs 3x/loop) allocates no list.
+		// Robot is a persistent singleton and init() reassigns the subsystems each OpMode run, so
+		// rebuild() MUST be called there -- otherwise this would keep stale instances from a prior run.
+		private var cached: List<ISubsystem> = emptyList()
+
+		fun rebuild() { cached = listOf(intake, turret, launcher) }
+
+		fun all(): List<ISubsystem> = cached
 	}
 
 	object Motors {
@@ -82,11 +89,22 @@ object Robot : ISubsystem {
         }
     }
 
+	/** Diagnostic telemetry: only emitted when [Globals.DEBUG_TELEMETRY] is on (a no-op in matches). */
+	fun debug(caption: String, value: Any?) {
+		if (Globals.DEBUG_TELEMETRY) telemetry.addData(caption, value)
+	}
+
 	fun init(hw: HardwareMap, telemetry: Telemetry, gamepad1: Gamepad, gamepad2: Gamepad) {
-		Robot.telemetry = MultipleTelemetry(FtcDashboard.getInstance().telemetry, telemetry)
+		// The FtcDashboard/Panels sink is only wired in for debug sessions; in matches it's an unused
+		// network+serialize cost on every addData, so default to driver-station telemetry only.
+		Robot.telemetry = if (Globals.DEBUG_TELEMETRY)
+			MultipleTelemetry(FtcDashboard.getInstance().telemetry, telemetry)
+		else
+			MultipleTelemetry(telemetry)
 		Robot.hw = hw
 
-		Robot.telemetry.msTransmissionInterval = 10
+		// Human-readable telemetry doesn't need 100 Hz; a slower cadence cuts per-loop transmit cost.
+		Robot.telemetry.msTransmissionInterval = if (Globals.DEBUG_TELEMETRY) 20 else 100
 
 		hubs = hw.getAll(LynxModule::class.java)
 		hubs.forEach { it.bulkCachingMode = LynxModule.BulkCachingMode.MANUAL }
@@ -117,6 +135,8 @@ object Robot : ISubsystem {
         )
 		Subsystems.turret = Turret(Motors.Turret.motor, AnalogDevices.Turret.encoder12Tooth, AnalogDevices.Turret.encoder13Tooth)
 		Subsystems.launcher = Launcher(Motors.Launcher.leftMotor, Motors.Launcher.rightMotor, Servos.Launcher.hood)
+
+		Subsystems.rebuild() // refresh the cached fan-out list for the newly-constructed subsystems
 
 		scheduler.registerSubsystem(*Subsystems.all().toTypedArray())
 

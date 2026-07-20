@@ -19,6 +19,13 @@ abstract class BaseTemplate(var initialHeading: Double = 0.0) : OpMode() {
 	val secondary by lazy { Robot.gamepad2 }
 
 	var lastTimeStamp = 0.0
+	// Loop-time meter state. The first sample is invalid (no prior timestamp), so it's skipped;
+	// thereafter we report a running average (sustained rate) and the worst-case single loop, which
+	// is the number that actually exposes GC/telemetry jitter. Reset each match in start().
+	private var hasPrevLoop = false
+	private var loopSumMs = 0.0
+	private var loopCount = 0L
+	private var loopMaxMs = 0.0
 
     var controller: PIDFController = PIDFController(PIDFCoefficients(1.2, 0.0, 0.0, 0.0))
 
@@ -29,15 +36,29 @@ abstract class BaseTemplate(var initialHeading: Double = 0.0) : OpMode() {
 
     fun setTargetPose(vector: Vector) { targetGoalPose = vector }
 
+	// Always on the plain driver-station telemetry so it survives Globals.DEBUG_TELEMETRY = false.
 	private fun logLoopTime() {
 		val now = System.nanoTime().toDouble()
-		telemetry.addData("loop time (hz)", 1e9 / (now - lastTimeStamp))
+		if (!hasPrevLoop) {
+			lastTimeStamp = now
+			hasPrevLoop = true
+			return
+		}
+		val loopMs = (now - lastTimeStamp) / 1e6
 		lastTimeStamp = now
+		loopSumMs += loopMs
+		loopCount++
+		if (loopMs > loopMaxMs) loopMaxMs = loopMs
+
+		val avgMs = loopSumMs / loopCount
+		telemetry.addData(
+			"loop",
+			"avg %.2f ms (%.0f Hz) | worst %.2f ms".format(avgMs, 1000.0 / avgMs, loopMaxMs)
+		)
 	}
 
 	override fun init() {
-        telemetry.msTransmissionInterval = 10
-
+        // msTransmissionInterval is set once in Robot.init (gated on Globals.DEBUG_TELEMETRY).
         Robot.init(hardwareMap, telemetry, gamepad1, gamepad2)
 
         initialize()
@@ -48,6 +69,12 @@ abstract class BaseTemplate(var initialHeading: Double = 0.0) : OpMode() {
 
 	override fun start() {
         resetRuntime()
+
+        // Start each match with a clean loop-time meter (init_loop iterations don't count).
+        hasPrevLoop = false
+        loopSumMs = 0.0
+        loopCount = 0L
+        loopMaxMs = 0.0
 
         if (!Globals.AUTO) {
             Robot.scheduler.schedule(
@@ -64,8 +91,7 @@ abstract class BaseTemplate(var initialHeading: Double = 0.0) : OpMode() {
 		Robot.hubs.forEach { it.clearBulkCache() }
 
 		Robot.read()
-		Robot.update()
-		Robot.scheduler.run()
+		Robot.update() // internally runs the CommandScheduler
 		Robot.write()
 
 		logLoopTime()
@@ -90,11 +116,15 @@ abstract class BaseTemplate(var initialHeading: Double = 0.0) : OpMode() {
 
         controller.updateError(robotAngleDiff)
 
-        Robot.telemetry.addData("robot heading", Math.toDegrees(robotHeadingDegrees))
-        Robot.telemetry.addData("global heading target", Math.toDegrees(globalTargetDegrees))
-        Robot.telemetry.addData("delta angle", robotAngleDiff)
+        Robot.debug("robot heading", Math.toDegrees(robotHeadingDegrees))
+        Robot.debug("global heading target", Math.toDegrees(globalTargetDegrees))
+        Robot.debug("delta angle", robotAngleDiff)
     }
 
+	// Mode-agnostic. Robot.update() runs the CommandScheduler once and the follower is advanced
+	// exactly once per loop inside Robot.read(); each mode's control law lives in cycle() (teleop
+	// drive in DriverControlled.cycle(); autos drive through Pedro), so nothing teleop-specific runs
+	// during autonomous.
 	override fun loop() {
 		Robot.hubs.forEach { it.clearBulkCache() }
 
@@ -103,28 +133,7 @@ abstract class BaseTemplate(var initialHeading: Double = 0.0) : OpMode() {
 
 		cycle()
 
-		Robot.scheduler.run()
-
-        val robotPose = Robot.follower.pose
-
-        face(targetGoalPose, robotPose)
-
-        val angularAdjustment =
-            if (goalLock) {
-                controller.run()
-            } else {
-                (-gamepad1.right_stick_x).toDouble()
-            }
-
-        Robot.follower.setTeleOpDrive(
-            (-gamepad1.left_stick_y).toDouble(),
-            (-gamepad1.left_stick_x).toDouble(),
-            angularAdjustment,
-            false,
-            Globals.globalHeadingOffset
-        )
-
-        Robot.write()
+		Robot.write()
 
         logLoopTime()
 

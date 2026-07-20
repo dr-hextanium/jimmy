@@ -4,6 +4,7 @@ import com.acmerobotics.dashboard.telemetry.MultipleTelemetry
 import com.pedropathing.geometry.Pose
 import com.pedropathing.math.Vector
 import org.firstinspires.ftc.teamcode.control.ShooterModel
+import org.firstinspires.ftc.teamcode.control.TrapezoidalProfile
 import org.firstinspires.ftc.teamcode.hardware.Robot
 import org.firstinspires.ftc.teamcode.testfakes.FakeAnalogInput
 import org.firstinspires.ftc.teamcode.testfakes.FakeDcMotorEx
@@ -448,6 +449,90 @@ class TurretTest {
         tick(0.02, current = 0.0)
         assertTrue("precondition: some power is being commanded", abs(turret.motorPower) > Turret.POWER_UPDATE_THRESHOLD)
         assertEquals("write() must push the commanded power to the motor", turret.motorPower, motor.getPower(), 1e-9)
+    }
+
+    // ---- cached TrapezoidalProfile: equivalence + live-tunable invalidation ----
+
+    @Test
+    fun profiledState_matchesFreshProfileConstructionAcrossVaryingDt() {
+        // The turret caches its TrapezoidalProfile and rebuilds it only when the limits change. Because
+        // calculate() is a pure function of (dt, current, goal, maxV, maxA), a cached instance must be
+        // bit-identical to constructing a fresh profile every loop. Mirror the turret's reference
+        // governor here with a freshly-built profile each step and require exact agreement.
+        prime(current = 0.0, target = 90.0)
+
+        var refPos = turret.profiledPosition // seeded to the measured angle on the dt==0 prime tick
+        var refVel = turret.profiledVelocity
+        assertEquals(0.0, refPos, 1e-12)
+        assertEquals(0.0, refVel, 1e-12)
+
+        // Irregular dt sequence (all in (0, MAX_DT]) plus a mid-run target reversal, so accel / cruise /
+        // decel / reversal branches are all exercised.
+        val dts = listOf(0.005, 0.02, 0.011, 0.03, 0.007, 0.015, 0.025, 0.009)
+        var target = 90.0
+        repeat(120) { i ->
+            if (i == 50) { target = -45.0; turret.setTargetAngle(target) }
+
+            // The turret integrates dt = seconds() - lastTime off the accumulating fake clock, which
+            // rounds; use that exact delta (not the nominal step) so this is a true bit-for-bit check of
+            // caching vs. fresh construction, not of clock round-off.
+            val before = clock.seconds()
+            tick(dts[i % dts.size], current = 0.0)
+            val dt = clock.seconds() - before
+
+            val next = TrapezoidalProfile(Turret.MAX_VELOCITY, Turret.MAX_ACCELERATION).calculate(
+                dt,
+                TrapezoidalProfile.State(refPos, refVel),
+                TrapezoidalProfile.State(target, 0.0),
+            )
+            refPos = next.position
+            refVel = next.velocity
+
+            assertEquals("profiled position diverged from a fresh profile at step $i", refPos, turret.profiledPosition, 1e-12)
+            assertEquals("profiled velocity diverged from a fresh profile at step $i", refVel, turret.profiledVelocity, 1e-12)
+        }
+    }
+
+    @Test
+    fun profileRespectsLiveMaxVelocityChange() {
+        Turret.MAX_ANGLE = 2000.0 // allow a long travel so the profile actually reaches cruise
+        Turret.MAX_VELOCITY = 700.0
+        Turret.MAX_ACCELERATION = 3600.0
+        prime(current = 0.0, target = 1500.0)
+
+        var peak = 0.0
+        repeat(40) { tick(0.01, current = 0.0); peak = maxOf(peak, abs(turret.profiledVelocity)) }
+        assertTrue("profile should reach cruise near MAX_VELOCITY (was $peak)", peak > 650.0)
+        assertTrue("profiled velocity must not exceed the original cap (was $peak)", peak <= 700.0 + 1e-6)
+
+        // Lower the cap live; if the cached profile weren't invalidated it would still allow ~700.
+        Turret.MAX_VELOCITY = 150.0
+        repeat(10) { tick(0.01, current = 0.0) }
+        assertTrue(
+            "lowering MAX_VELOCITY live must bound the profiled velocity (was ${turret.profiledVelocity})",
+            abs(turret.profiledVelocity) <= 150.0 + 1e-6
+        )
+    }
+
+    @Test
+    fun profileRespectsLiveMaxAccelerationChange() {
+        Turret.MAX_ANGLE = 4000.0
+        Turret.MAX_VELOCITY = 3000.0 // high enough that we stay in the accel phase during measurement
+        Turret.MAX_ACCELERATION = 3600.0
+        prime(current = 0.0, target = 3000.0)
+
+        tick(0.01, current = 0.0); val v1 = turret.profiledVelocity
+        tick(0.01, current = 0.0); val v2 = turret.profiledVelocity
+        val accelBefore = (v2 - v1) / 0.01
+        assertEquals("accel phase should ramp at MAX_ACCELERATION", 3600.0, accelBefore, 1.0)
+
+        // Lower the accel cap live; a stale cached profile would keep ramping at 3600.
+        Turret.MAX_ACCELERATION = 500.0
+        tick(0.01, current = 0.0) // transition tick
+        tick(0.01, current = 0.0); val v3 = turret.profiledVelocity
+        tick(0.01, current = 0.0); val v4 = turret.profiledVelocity
+        val accelAfter = (v4 - v3) / 0.01
+        assertEquals("lowering MAX_ACCELERATION live must bound the ramp rate", 500.0, accelAfter, 1.0)
     }
 
     // ---- setTargetAngle clamping ----

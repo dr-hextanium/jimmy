@@ -140,6 +140,23 @@ class ShooterModelTest {
         assertEquals(expectedInPerSec, actual, 1e-9)
     }
 
+    @Test
+    fun horizontalExitSpeed_matchesAimReferenceAcrossDistanceSweep() {
+        // The inlined hot-path implementation must equal the aim()-based reference bit-for-bit, across a
+        // fine sweep AND at a deep-clamp/unreachable distance (5000 in -> targetTps clamped to MAX_TPS).
+        val distances = (20..400 step 5).map { it.toDouble() } + listOf(5000.0)
+        for (d in distances) {
+            val sol = ShooterModel.aim(d)
+            val expected = ProjectileSolver.horizontalSpeed(
+                ShooterModel.exitSpeedFromTps(sol.targetTps), sol.launchAngleRad
+            ) / i2m
+            assertEquals(
+                "horizontalExitSpeed mismatch at $d in",
+                expected, ShooterModel.horizontalExitSpeedInchesPerSec(d), 1e-12
+            )
+        }
+    }
+
     // ---- tunable sensitivity (physical directions) ----
 
     @Test

@@ -101,6 +101,27 @@ open class DriverControlled(val isRed: Boolean, initialHeading: Double) : BaseTe
     }
 
     override fun cycle() {
+        // Field-centric teleop drive + turret/heading goal-lock. Lives here (not in BaseTemplate.loop())
+        // so it never runs during autonomous, which drives through Pedro. setTeleOpDrive stores the
+        // movement vectors; they take effect on the next loop's follower.update() (in Robot.read()).
+        val robotPose = Robot.follower.pose
+        face(targetGoalPose, robotPose)
+
+        val angularAdjustment =
+            if (goalLock) {
+                controller.run()
+            } else {
+                (-gamepad1.right_stick_x).toDouble()
+            }
+
+        Robot.follower.setTeleOpDrive(
+            (-gamepad1.left_stick_y).toDouble(),
+            (-gamepad1.left_stick_x).toDouble(),
+            angularAdjustment,
+            false,
+            Globals.globalHeadingOffset
+        )
+
         val launcherPowerChange = when {
             gamepad2.dpad_right -> launcherIncrement
             gamepad2.dpad_left -> -launcherIncrement
@@ -126,15 +147,17 @@ open class DriverControlled(val isRed: Boolean, initialHeading: Double) : BaseTe
             Robot.scheduler.schedule(ManualHood { hoodPosition })
         }
 
-        Robot.telemetry.addData("robot pose", Robot.follower.pose.let { "x: ${it.x}, y: ${it.y}, h: ${Math.toDegrees(it.heading).roundToInt()}" })
+        if (Globals.DEBUG_TELEMETRY) {
+            Robot.telemetry.addData("robot pose", Robot.follower.pose.let { "x: ${it.x}, y: ${it.y}, h: ${Math.toDegrees(it.heading).roundToInt()}" })
 
-        Robot.telemetry.addData("launching scalar", launcherPower)
-        Robot.telemetry.addData("hood scalar", hoodPosition)
+            Robot.telemetry.addData("launching scalar", launcherPower)
+            Robot.telemetry.addData("hood scalar", hoodPosition)
 
-        Robot.telemetry.addData("aiming at goal?", goalLock)
+            Robot.telemetry.addData("aiming at goal?", goalLock)
 
-        Robot.telemetry.addData("distance to goal", distanceToGoal())
-        Robot.telemetry.addData("target goal pose", targetGoalPose)
+            Robot.telemetry.addData("distance to goal", distanceToGoal())
+            Robot.telemetry.addData("target goal pose", targetGoalPose)
+        }
     }
 
     override fun stop() {

@@ -126,6 +126,15 @@ class Turret(
     private var lastTime: Double = 0.0
     private var profileInitialized: Boolean = false
 
+    // Cached reference governor. MAX_VELOCITY/MAX_ACCELERATION are @Configurable live-tunables, so the
+    // profile is rebuilt only when either changes -- otherwise the hot loop would allocate a
+    // TrapezoidalProfile (plus run its two require() checks) every tick. calculate() is a pure function
+    // of (dt, current, goal, maxV, maxA) with no instance state, so a reused instance with the same
+    // limits is bit-identical to a freshly constructed one.
+    private var cachedProfile: TrapezoidalProfile? = null
+    private var cachedMaxVelocity: Double = Double.NaN
+    private var cachedMaxAcceleration: Double = Double.NaN
+
     var aimAtGoal = false
     var offset = 0.0
 
@@ -155,6 +164,26 @@ class Turret(
         motorFusionHealthy = true
         fusionSignDisagreeStreak = 0
         wasUsingFusion = false
+
+        cachedProfile = null // rebuilt lazily from the current MAX_VELOCITY/MAX_ACCELERATION
+    }
+
+    /**
+     * The reference-governor [TrapezoidalProfile], rebuilt only when [MAX_VELOCITY]/[MAX_ACCELERATION]
+     * (both live-tunable) change. Each limit is read once here so a mid-loop dashboard write can't tear
+     * the (maxV, maxA) pair, and the require() checks in the constructor run only on an actual change.
+     */
+    private fun profile(): TrapezoidalProfile {
+        val maxV = MAX_VELOCITY
+        val maxA = MAX_ACCELERATION
+        var p = cachedProfile
+        if (p == null || maxV != cachedMaxVelocity || maxA != cachedMaxAcceleration) {
+            p = TrapezoidalProfile(maxV, maxA)
+            cachedProfile = p
+            cachedMaxVelocity = maxV
+            cachedMaxAcceleration = maxA
+        }
+        return p
     }
 
     override fun read() {
@@ -212,7 +241,7 @@ class Turret(
 
         var profileAccel = 0.0
         if (dt > 0.0) {
-            val profile = TrapezoidalProfile(MAX_VELOCITY, MAX_ACCELERATION)
+            val profile = profile()
             val next = profile.calculate(
                 dt,
                 TrapezoidalProfile.State(profiledPosition, profiledVelocity),
@@ -356,9 +385,9 @@ class Turret(
 
         setTargetAngle(robotAngleDiff)
 
-        Robot.telemetry.addData("robot heading (deg)", robotHeadingDegrees)
-        Robot.telemetry.addData("Corrected Global Target (deg)", globalTargetDegrees)
-        Robot.telemetry.addData("Final Turret Target (deg)", robotAngleDiff)
+        Robot.debug("robot heading (deg)", robotHeadingDegrees)
+        Robot.debug("Corrected Global Target (deg)", globalTargetDegrees)
+        Robot.debug("Final Turret Target (deg)", robotAngleDiff)
     }
 
     private fun normalizeAngle(degrees: Double): Double {
