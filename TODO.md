@@ -37,6 +37,10 @@ Analog input | Turret 12T encoder | `te12` | `Names.kt:38`
 Analog input | Turret 13T encoder | `te13` | `Names.kt:39`
 I2C (Pinpoint) | Odometry computer | `pinpoint` | `Constants.java:48`
 
+- [ ] If you don't yet know which physical motor is on which port/name, run **"Motor Mapper"**. It
+      live-enumerates every motor in the config (including names *not* in `Names.kt`, flagged
+      `UNMAPPED`), and lets you spin one at a time (hold RT/LT, dead-man, capped at 0.6) to see which
+      one moves — plus its port + hub. Use it to reconcile the config names/ports above.
 - [ ] Every device above exists in the Control Hub config with the matching name and port.
 - [ ] Run **"Robot Status Debug"** — it calls `Robot.init(...)`. If it inits without a crash, all
       names/types resolve. (It only reads; nothing is driven.)
@@ -66,7 +70,7 @@ Current: `right=REVERSE, left=FORWARD`. Both must spin the single flywheel the *
 - [ ] Run **"Launcher RPM (open loop)"** — dial up a little power and confirm both wheels drive a
       ball *out*, and that the two reported velocities have the **same sign**. Flip one if they fight.
 
-### Turret motor — `hardware/subsystem/Turret.kt:76` (`FORWARD`) + gear-mesh sign, see §3.
+### Turret motor — `hardware/subsystem/Turret.kt:136` (`FORWARD`) + gear-mesh sign, see §3.
 
 ### Intake motor — `hardware/subsystem/Intake.kt:27` (`REVERSE`)
 - [ ] Run **"Intake Debug"** (right trigger = in) and confirm it pulls artifacts *in*.
@@ -96,24 +100,53 @@ Values that can only be found by running the physical robot. All default to safe
 pattern as the turret encoder offsets).
 
 ### Turret absolute-encoder zero offsets 🔴 (turret won't know where it is)
-`Turret.kt:263-264` — `ENCODER_12T_ZERO_OFFSET_DEG`, `ENCODER_13T_ZERO_OFFSET_DEG` (default `0.0`).
+`Turret.kt:433-434` — `ENCODER_12T_ZERO_OFFSET_DEG`, `ENCODER_13T_ZERO_OFFSET_DEG` (default `0.0`).
 - [ ] Run **"Turret Encoder Debug"**. Move the turret to its true mechanical **zero**, read the two
       "raw deg" values, and set the offsets to those numbers.
 - [ ] **Gear-mesh sign:** in the same tool, rotate the turret in your **positive** direction and
       confirm the *fused* angle **increases**. If it decreases, the sign assumption in
-      `fuseAbsoluteAngle` is wrong (ratios at `Turret.kt:257-258`) — see the note at `Turret.kt:233-235`.
+      `fuseAbsoluteAngle` is wrong (ratios at `Turret.kt:427-428`) — see the note at `Turret.kt:388-390`.
       Do not trust the turret for motion until the fused angle tracks correctly through the full
       `MIN_ANGLE..MAX_ANGLE` sweep.
-- [ ] Confirm `ENCODER_MAX_VOLTAGE` (`Turret.kt:255`, default `3.3`) matches your analog encoders.
-- [ ] Confirm `MOTOR_TICKS_PER_REV` (`Turret.kt:248`, `145.1`) and `TURRET_GEAR_RATIO`
-      (`Turret.kt:251`, `137/15`) match the actual motor and gear counts.
+- [ ] Confirm `ENCODER_MAX_VOLTAGE` (`Turret.kt:425`, default `3.3`) matches your analog encoders.
+- [ ] Confirm `MOTOR_TICKS_PER_REV` (`Turret.kt:417`, `145.1`) and `TURRET_GEAR_RATIO`
+      (`Turret.kt:420`, `137/15`) match the actual motor and gear counts.
 - [ ] Confirm the idler gear ratios `ENCODER_12T_GEAR_RATIO` (`137/12`) and `ENCODER_13T_GEAR_RATIO`
-      (`137/13`) at `Turret.kt:257-258` match the rebuilt turret's tooth counts. The vernier/CRT
+      (`137/13`) at `Turret.kt:427-428` match the rebuilt turret's tooth counts. The vernier/CRT
       decode in `fuseAbsoluteAngle` relies on these two being **coprime**; if either idler or the
       turret gear changed, the whole absolute-angle fusion must be re-derived, not just re-tuned.
 
+### Turret angle filtering 🟡 (encoders are noisy; defaults are safe, tune for steadiness)
+`Turret.kt:440-441` — `ANGLE_FILTER_TAU` (`0.02` s), `ANGLE_FILTER_SPIKE_GATE` (`10.0` deg). Both are
+`@Configurable`, so live-tune from the dashboard. The fused angle is now continuity-tracked (immune to
+the ~31.5° revolution flip the raw vernier can suffer under noise) and smoothed by a `FadingMemoryFilter`.
+- [ ] In **"Turret Encoder Debug"**, at rest compare `measured angle (pre-filter)` vs `FUSED angle
+      (filtered)`. Raise `ANGLE_FILTER_TAU` until the filtered angle is steady; stop before jog
+      tracking feels laggy (the turret goal-locks a *moving* target).
+- [ ] Set `ANGLE_FILTER_SPIKE_GATE` just above the worst clean per-loop angle step (≈ `MAX_VELOCITY` ×
+      loop time) so it clips only gross spikes, never real motion.
+- [ ] Sweep the full travel including revolution seams (~every 31.5°) and confirm the FUSED angle never
+      steps ~31.5° at speed. (Supersedes the old "decode noise margin" bug item — see §Bugs.)
+
+### Turret motor-encoder fusion 🟢 (opt-in; OFF by default — the absolute-only path above is the default)
+`Turret.kt:447-450` — `USE_MOTOR_FUSION` (`false`), `MOTOR_ANGLE_SIGN` (`1.0`), `MOTOR_FUSION_TAU`
+(`0.10` s), `MOTOR_FUSION_GATE` (`15.0` deg). All `@Configurable`. Fuses the drive motor's quadrature
+encoder (clean, high-res, stall-proof) with the absolute decode via a `ComplementaryFilter`, for a
+cleaner velocity, near-zero-lag position, and stronger revolution disambiguation. **A wrong
+`MOTOR_ANGLE_SIGN` is runaway-class**, so enable it ONLY after the sign check below.
+- [ ] **Confirm the sign FIRST.** In **"Turret Encoder Debug"** (fusion still OFF), jog **positive** and
+      confirm the `motor-implied angle (deg)` readout increases together with the FUSED angle. If it
+      decreases, flip `MOTOR_ANGLE_SIGN` (`Turret.kt:448`) to `-1.0`.
+- [ ] Confirm the drive-train scale is right (`MOTOR_TICKS_PER_REV` / `TURRET_GEAR_RATIO`, above) — a
+      scale error is self-correcting but keep it close.
+- [ ] Only then set `USE_MOTOR_FUSION = true`. Sweep the full travel across seams and confirm the FUSED
+      angle stays continuous (no ~31.5° jump) and the `fusion healthy?` readout stays true.
+- [ ] Tune `MOTOR_FUSION_TAU` (larger = steadier/trusts motor more, smaller = corrects to absolute
+      faster) and `MOTOR_FUSION_GATE` (must sit **above** the turret's gear backlash and **below** one
+      seam ≈ 31.5°). Then revisit `kD` — the tachometer velocity is cleaner than the filtered absolute.
+
 ### Turret travel limits 🔴 (prevents winding up cables / hitting hard stops)
-`Turret.kt:266-267` — `MAX_ANGLE` (`90.0`), `MIN_ANGLE` (`-90.0`).
+`Turret.kt:457-458` — `MAX_ANGLE` (`90.0`), `MIN_ANGLE` (`-90.0`).
 - [ ] Set to the real mechanical travel of the turret (degrees from zero). `setTargetAngle` clamps
       to these.
 
@@ -159,12 +192,16 @@ manual-aim path and the kinematic-aim path will silently disagree:
 
 Safe starting gains are in place; tune for performance once directions + calibration are done.
 
-### Turret feedforward + PID — `Turret.kt:272-282`
+### Turret feedforward + PID — `Turret.kt:463-475`
 - [ ] `MAX_VELOCITY` (`700.0` deg/s), `MAX_ACCELERATION` (`3600.0` deg/s²) — motion-profile limits.
       Start conservative, raise until it tracks without stalling/overshoot.
-- [ ] `kV` (`0.0012` ≈ 1/MAX_VELOCITY), `kA` (`0.0`), `kP` (`0.038`), `kD` (`0.0`, encoder is noisy),
-      `kStatic` (`0.02`). Tune feedforward (`kV`, then `kStatic`) first, then trim with `kP`.
-- [ ] `ANGLE_TOLERANCE_DEGREES` (`Turret.kt:282`, `0.2`) — "at target" band for `isAtTarget()`.
+- [ ] `kV` (`0.0012` ≈ 1/MAX_VELOCITY), `kA` (`0.0`), `kP` (`0.038`), `kStatic` (`0.02`). Tune
+      feedforward (`kV`, then `kStatic`) first, then trim with `kP`.
+- [ ] `kD` (`0.0`) — velocity error damping. It was off because the raw encoder was too noisy to
+      differentiate; velocity now comes from the `FadingMemoryFilter` (`measuredVelocity`), or the motor
+      tachometer when motor fusion is on (cleaner), so after tuning the filter you can raise `kD` until
+      motion is critically damped (no overshoot ring).
+- [ ] `ANGLE_TOLERANCE_DEGREES` (`Turret.kt:475`, `0.2`) — "at target" band for `isAtTarget()`.
 
 ### Launcher velocity loop — `Launcher.kt:132-134`
 Feedforward-first (`kS + kV·targetTPS + kP·error`, clamped 0..1). Do **not** make it
@@ -192,6 +229,9 @@ proportional-dominant.
 - [ ] `RED_GOAL_POSE` = (144, 144), `BLUE_GOAL_POSE` = (0, 144) (`Globals.kt:21,24`) — confirm against
       the real Decode goal locations. These drive turret aim and shooter distance.
 - [ ] `BLUE_RESET_POSE` / `RED_RESET_POSE` (`Globals.kt:27,30`) — relocalization poses; confirm.
+- [ ] `RED_BASE_POSE` / `BLUE_BASE_POSE` (`Globals.kt`) — base-zone relocalize poses used by the
+      **LEFT_STICK** button (position + base-zone heading). Confirm x/y/heading on the real field;
+      x/y currently mirror the base-zone reference points in `Zones.kt`, heading = 0°(red)/180°(blue).
 
 Autonomous start poses:
 - [ ] `Robot.kt:125` sets a default `follower.setStartingPose(Pose(0.0, 0.0, 0.0))`. Each auto in
@@ -218,11 +258,60 @@ Autonomous start poses:
 
 ---
 
+## 7. Code-review findings & fixes (2026-07-16) — see [`BUGS.md`](BUGS.md)
+
+A full bug-hunt pass over `TeamCode/src/main` + the JVM tests. Full write-up (severities, failure
+scenarios, per-item fix plans, and the non-issues that were cleared) lives in `BUGS.md`. The control
+core (`control/`, and the launcher/turret/intake math) came back **clean**. One safe fix was applied
+and tested; the rest are competition-tested glue/timing that should be changed **on the robot**, not
+blind.
+
+### Applied this pass ✅ (fixed + JVM-tested, suite green)
+- [x] **Launcher hood no longer slams to `0.0` at TeleOp start.** `Launcher.reset()` now seeds
+      `targetHoodPosition = HOOD_HIGH`, so the first `write()` parks the hood at its rest position
+      instead of driving it past the usable-travel low end. Regression test added. (BUGS.md A1)
+
+### Verify on the robot, then fix 🟡 (do NOT change blind)
+- [ ] **Scheduler runs twice per loop** → `follower.update()` ~4×/loop in auto. Remove the redundant
+      second `Robot.scheduler.run()` in `BaseTemplate.loop()`/`init_loop()`, then re-check each auto's
+      timing on the field. (BUGS.md B1)
+- [x] **Turret decode noise margin.** The rate/outlier guard this asked for now exists: the fused
+      angle is continuity-tracked (can't take the ~31.5° revolution flip) and smoothed by a
+      `FadingMemoryFilter`. Remaining work is *tuning*, not a fix — see "Turret angle filtering" in §3.
+      (BUGS.md B2/B3)
+- [ ] **`AUTO_RECOVERY_POSITION` is never written**, so TeleOp always starts localized at field
+      center `(72, 72, 0)`. Decide: wire the auto→TeleOp pose hand-off, or drop the field. (BUGS.md B4)
+- [ ] **`RedClose12Old` shows as "Red Close 12"** on the Driver Station while the live routine is
+      "Red Close 12 Elims Gate" — pick the canonical Red auto, then rename/delete. (BUGS.md B5; see
+      also "decide separately" below)
+- [ ] **Turret runs its PID during auto `init_loop`** (pre-START). Benign once §3 is calibrated;
+      gate the motor write on a "started" flag if you don't want it energized in INIT. (BUGS.md B6)
+- [ ] **`InstantCommand({ stop() })` at auto end doesn't stop the OpMode**; the flywheel keeps
+      spinning to the 30 s timer. Use `requestOpModeStop()` / zero the actuators for a real halt.
+      (BUGS.md B7)
+- [ ] **TeleOp flywheel start (`0.71`) ≠ shown scalar (`0.64`)**, so the first dpad trim steps the
+      speed *down*. Pick one source of truth. (BUGS.md B8)
+- [ ] **Relocalize button heading intent** — the `LEFT_STICK_BUTTON` reset ends up using the
+      reset-pose heading (143°/37°), not `actualHeadingAtBaseZone` (0/π) as a dead line implied.
+      Decide what the button means physically and make it explicit. (BUGS.md, intent note)
+
+### Design notes / cosmetic (do NOT "fix" naively — see BUGS.md)
+- Commands intentionally declare **no** subsystem requirements. This is load-bearing: parallel groups
+  whose members both touch Intake (`IntakeWithGateClosed`, `FeedLauncherArtifacts`) would otherwise
+  throw at construction. Do not add requirements.
+- `pedroPathing/ArtifactPlanning.kt` is broken (all-zero Jacobian) and unused — candidate for deletion
+  along with the `org.hipparchus:hipparchus-optim` dependency. Mixed tabs/spaces left as-is to keep
+  the diff reviewable.
+
+---
+
 ### Not addressed here (decide separately)
 - The four `Old` variant files (`opmode/auto/BlueClose12Old.kt`, `RedClose12Old.kt`,
   `paths/BlueClose12OldPaths.java`, `paths/BlueClose12PathsOld.java`) are whole historical files, not
   commented-out code, so this cleanup left them in place. Delete them if they're truly obsolete —
-  your call.
+  your call. ⚠️ **`RedClose12Old` is annotated `@Autonomous(name = "Red Close 12")`** — so on the
+  Driver Station it appears as the plain "Red Close 12" and can be selected in a match by mistake
+  instead of the live "Red Close 12 Elims Gate". Resolve the name before it bites you (BUGS.md B5).
 - Battery-voltage monitoring was removed from `Robot.kt` (it was fully dead — sampled nowhere). Re-add
   a `VoltageSensor` read in `Robot.read()` if you want brownout/voltage-comp telemetry on the new robot.
 - The `limelight` device grab was removed from `Robot.kt`. Re-add it if the new robot has vision.

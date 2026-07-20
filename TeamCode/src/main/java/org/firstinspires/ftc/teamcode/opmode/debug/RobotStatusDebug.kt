@@ -13,7 +13,8 @@ import kotlin.math.hypot
  * pose, distance to each goal, turret fused angle, launcher velocities + at-speed, and hood/gate
  * positions.
  *
- * Low risk: after init it only calls Robot.read() (localizer + sensor reads); it never calls
+ * Low risk: after init it only calls Robot.read() (localizer + sensor reads) plus the turret's pure
+ * update() (needed to decode/filter its fused angle -- it drives no hardware); it never calls
  * Robot.update()/write(), so no motor or servo is driven from the loop.
  */
 @TeleOp(name = "Robot Status Debug", group = "Debug")
@@ -25,6 +26,9 @@ class RobotStatusDebug : OpMode() {
     override fun loop() {
         Robot.hubs.forEach { it.clearBulkCache() }
         Robot.read() // localizer + subsystem reads only -- no actuator writes
+        // Turret decode + angle filter live in update() (they need dt); run just the turret's pure
+        // update so the fused angle below is fresh. update() never writes hardware, so this is safe.
+        Robot.Subsystems.turret.update()
 
         val pose = Robot.follower.pose
         telemetry.addData("pose x", "%.1f", pose.x)
