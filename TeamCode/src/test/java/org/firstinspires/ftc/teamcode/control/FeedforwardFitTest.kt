@@ -146,6 +146,51 @@ class FeedforwardFitTest {
         assertTrue("fit quality should be high", r.r2 > 0.95)
     }
 
+    // ---- single-direction steady-state fit (launcher flywheel) ----
+
+    private fun singleDirection(kS: Double, kVGain: Double, minV: Double): List<Sample> =
+        // power = kS + kV*v, swept over one direction only (flywheel TPS, all positive).
+        listOf(400.0, 800.0, 1200.0, 1600.0, 2000.0).map { v -> Sample(kS + kVGain * v, v) }
+
+    @Test
+    fun singleDirection_recoversGains() {
+        val kS = 0.05
+        val kVGain = 0.00038
+        val r = FeedforwardFit.fitSteadyStateSingleDirection(singleDirection(kS, kVGain, 100.0), 100.0)
+        assertEquals(kVGain, r.kV, 1e-9)
+        assertEquals(kS, r.kStatic, 1e-9)
+        assertEquals(1.0, r.r2, 1e-9)
+        assertEquals(5, r.n)
+    }
+
+    @Test
+    fun singleDirection_recoversGainsUnderNoise() {
+        val rng = java.util.Random(11)
+        val kS = 0.05
+        val kVGain = 0.00038
+        val noisy = singleDirection(kS, kVGain, 100.0).flatMap { s ->
+            (0 until 20).map { Sample(s.power, s.velocity + rng.nextGaussian() * 20.0) }
+        }
+        val r = FeedforwardFit.fitSteadyStateSingleDirection(noisy, 100.0)
+        assertEquals(kVGain, r.kV, 5e-5)
+        assertEquals(kS, r.kStatic, 1e-2)
+        assertTrue("fit quality should be high", r.r2 > 0.95)
+    }
+
+    @Test
+    fun singleDirection_dropsSubBreakawaySamples() {
+        // A stationary-but-powered point (below MIN_TPS) must be excluded from the fit.
+        val data = singleDirection(0.05, 0.00038, 100.0) + Sample(0.04, 30.0)
+        val r = FeedforwardFit.fitSteadyStateSingleDirection(data, 100.0)
+        assertEquals(0.00038, r.kV, 1e-9)
+        assertEquals(0.05, r.kStatic, 1e-9)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun singleDirection_rejectsTooFewSamples() {
+        FeedforwardFit.fitSteadyStateSingleDirection(listOf(Sample(0.2, 500.0)), 100.0)
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun timeConstant_rejectsFallingResponse() {
         // Velocity decreasing over time can't be a rising step toward vTerm -> positive slope.

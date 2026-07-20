@@ -222,13 +222,40 @@ characterizes the plant open-loop (SysId-style) and prints ready-to-paste `kStat
       motion is critically damped (no overshoot ring).
 - [ ] `ANGLE_TOLERANCE_DEGREES` (`Turret.kt:475`, `0.2`) — "at target" band for `isAtTarget()`.
 
-### Launcher velocity loop — `Launcher.kt:132-134`
+### Launcher velocity loop
 Feedforward-first (`kS + kV·targetTPS + kP·error`, clamped 0..1). Do **not** make it
 proportional-dominant.
+
+**Automated (recommended): run "Launcher Auto-Tune"** (`opmode/debug/LauncherAutoTune.kt`). It
+characterizes the flywheel open-loop and prints ready-to-paste `kS`, `kV`, `kP` **and** a recommended
+`SPINUP_CURRENT_LIMIT_A` at the knee of the spin-up-time-vs-current curve. Procedure:
+- [ ] Clear the flywheel area (it **will spin to near full speed**). **Hold RIGHT BUMPER** to run
+      (release / press **B** stops instantly). Phase A sweeps steady-state powers; Phase B sweeps the
+      current limit and times the spin-up at each.
+- [ ] Run it on a **representative (freshish) battery** — stall current scales with pack voltage.
+- [ ] At **DONE**, copy `kS`/`kV`/`kP`/`SPINUP_CURRENT_LIMIT_A` into the companion, or press **Y** to
+      apply them live (they persist into the next TeleOp). Watch the diagnostics: FF-fit R², `tau`, the
+      time-vs-limit table, and the "running current at ref" (the recommendation is floored above it so
+      the limit can't throttle the wheel at speed). A "no clear knee" note means widen the sweep.
+
+**Manual fallback:**
 - [ ] `kV` (`0.0004` ≈ 1/MAX_TPS) — set so `kV·targetTPS` alone roughly holds the target speed.
 - [ ] `kS` (`0.0`) — static offset; `kP` (`0.0003`) — small trim only.
-- [ ] `AT_SPEED_TOLERANCE` (`Launcher.kt:129`, `0.05` = 5%) and `MIN_TPS` (`:124`, `100.0`).
-- [ ] Current alert is set to `15.0 A` in `Launcher.kt:84` — adjust for your motors if needed.
+- [ ] `AT_SPEED_TOLERANCE` (`0.05` = 5%) and `MIN_TPS` (`100.0`).
+- [ ] Current alert is set to `15.0 A` in `Launcher.kt` — adjust for your motors if needed.
+
+### Launcher current-limited spin-up 🟢 (opt-in; OFF by default) — `Launcher.kt`
+`SPINUP_CURRENT_LIMIT_A` (default `0.0` = **disabled** → the plain feedforward+P loop, unchanged) and
+`SPINUP_RECOVERY_PER_SEC` (`6.0`). When set, a `CurrentLimiter` caps power so per-motor current stays
+near the budget — fastest spin-up within a current limit (`min(FF+P, currentCap)`; only bites during
+spin-up, hands back to the velocity loop at speed).
+- [ ] Set `SPINUP_CURRENT_LIMIT_A` from the "Launcher Auto-Tune" knee recommendation. **It must sit
+      above the steady-state current needed to hold the target speed** (the tuner floors it there); a
+      value below that will throttle the wheel at speed and stall shots.
+- [ ] The enforced limit is *soft*: the one-loop stall spike and the constant-current hunt run a bit
+      above the setpoint. Compare the tuner's printed peak vs the setpoint if peak draw matters.
+- [ ] Confirm the drive motors report per-port current (`getCurrent`) on the hub; a bad reading makes
+      the limiter inert (falls back to the plain loop) by design.
 
 ### Pedro Pathing follower — `pedroPathing/Constants.java`
 - [ ] `mass(11.34)` (`:28`) — set to the **new robot's mass in kg**.
@@ -291,9 +318,9 @@ blind.
       instead of driving it past the usable-travel low end. Regression test added. (BUGS.md A1)
 
 ### Verify on the robot, then fix 🟡 (do NOT change blind)
-- [ ] **Scheduler runs twice per loop** → `follower.update()` ~4×/loop in auto. Remove the redundant
-      second `Robot.scheduler.run()` in `BaseTemplate.loop()`/`init_loop()`, then re-check each auto's
-      timing on the field. (BUGS.md B1)
+- [x] **Scheduler runs twice per loop** → `follower.update()` ~4×/loop in auto. **Applied** in the
+      loop-time pass (see §8): scheduler and follower now tick **once per loop**. ⚠️ still needs the
+      on-field re-check — re-run every auto and confirm path tracking/segment transitions. (BUGS.md B1)
 - [x] **Turret decode noise margin.** The rate/outlier guard this asked for now exists: the fused
       angle is continuity-tracked (can't take the ~31.5° revolution flip) and smoothed by a
       `FadingMemoryFilter`. Remaining work is *tuning*, not a fix — see "Turret angle filtering" in §3.
@@ -334,3 +361,36 @@ blind.
 - Battery-voltage monitoring was removed from `Robot.kt` (it was fully dead — sampled nowhere). Re-add
   a `VoltageSensor` read in `Robot.read()` if you want brownout/voltage-comp telemetry on the new robot.
 - The `limelight` device grab was removed from `Robot.kt`. Re-add it if the new robot has vision.
+
+---
+
+## 8. Loop-time optimization pass (2026-07-20)
+
+Reduced per-loop work and jitter. **JVM suite green; every change is behavior-preserving in code, but
+the auto/telemetry changes must be confirmed on the robot.** Note: the hard I/O floor (2 Lynx hubs'
+bulk reads + the Pinpoint I2C read) puts the realistic sustained loop ceiling at **~120 Hz, not 200 Hz**
+— use the new meter to read the true number on this robot.
+
+### Applied ✅ (code + JVM tests)
+- **Loop-time meter** — `BaseTemplate.logLoopTime()` now shows `avg … ms (… Hz) | worst … ms` (worst-case
+  exposes GC/telemetry spikes). Always on the driver station, independent of the debug flag below.
+- **One `scheduler.run()` and one `follower.update()` per loop** (was 2× / up to 4× in auto).
+- **Teleop drive moved out of the shared loop** into `DriverControlled.cycle()`, so autos no longer run
+  `face()` + `setTeleOpDrive()`.
+- **Tier-3 micro-opts** (bit-identical, tested): cached turret `TrapezoidalProfile`, launcher velocity
+  sampled once in `read()`, `ShooterModel.horizontalExitSpeed…` de-duplicated, cached `Subsystems.all()`.
+
+### New setup knob 🟢 — `Globals.DEBUG_TELEMETRY` (`Globals.kt`, default **false**)
+- Matches: **leave OFF.** Telemetry goes to the driver station only (no FTC Dashboard/Panels sink) and
+  transmits at 100 ms; diagnostic lines are suppressed. The loop meter still shows.
+- Tuning/pit: **set it ON from the dashboard BEFORE init** to wire the Dashboard/Panels sink back in
+  (20 ms transmit) and stream all the diagnostic lines the tuning OpModes and subsystems emit.
+
+### Must verify on the robot 🟡
+- [ ] Re-run **every autonomous** end-to-end — the single-`follower.update()` change alters the auto
+      motion path (once-per-loop is Pedro's intended cadence, but confirm tracking + segment hand-offs).
+- [ ] TeleOp: field-centric drive + turret goal-lock still behave (drive relocated to `cycle()`).
+- [ ] Read the loop meter (avg + worst) in TeleOp and in auto-during-path; confirm auto dropped toward
+      the ~120 Hz floor.
+- [ ] With `DEBUG_TELEMETRY = false`, confirm the Dashboard shows nothing but the driver station still
+      shows the loop meter; flip it ON and confirm the Dashboard graphs return.

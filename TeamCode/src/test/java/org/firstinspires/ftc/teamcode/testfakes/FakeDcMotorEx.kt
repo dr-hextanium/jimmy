@@ -36,6 +36,8 @@ class FakeDcMotorEx : DcMotorEx {
     var fakeCurrentPosition = 0
     /** Last current-alert threshold written via [setCurrentAlert], in amps. */
     var currentAlertAmps = 0.0
+    /** Simulated motor current (amps). A real motor reports this read-only; tests set it directly. */
+    var fakeCurrent = 0.0
 
     // --- DcMotorSimple ---
     override fun setPower(power: Double) { powerValue = power }
@@ -78,7 +80,7 @@ class FakeDcMotorEx : DcMotorEx {
     override fun getPIDFCoefficients(mode: DcMotor.RunMode?): PIDFCoefficients = throw NotImplementedError("FakeDcMotorEx.getPIDFCoefficients")
     override fun setTargetPositionTolerance(tolerance: Int) = throw NotImplementedError("FakeDcMotorEx.setTargetPositionTolerance")
     override fun getTargetPositionTolerance(): Int = throw NotImplementedError("FakeDcMotorEx.getTargetPositionTolerance")
-    override fun getCurrent(unit: CurrentUnit?): Double = throw NotImplementedError("FakeDcMotorEx.getCurrent")
+    override fun getCurrent(unit: CurrentUnit?): Double = fakeCurrent // test knob is in amps; unit ignored
     override fun getCurrentAlert(unit: CurrentUnit?): Double = throw NotImplementedError("FakeDcMotorEx.getCurrentAlert")
     override fun setCurrentAlert(current: Double, unit: CurrentUnit?) { currentAlertAmps = current }
     override fun isOverCurrent(): Boolean = throw NotImplementedError("FakeDcMotorEx.isOverCurrent")

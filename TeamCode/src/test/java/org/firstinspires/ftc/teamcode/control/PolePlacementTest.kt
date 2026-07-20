@@ -67,6 +67,64 @@ class PolePlacementTest {
         assertTrue("kP=${g.kP} outside plausible band", g.kP in 0.02..0.06)
     }
 
+    // ---- first-order velocity-loop gain (launcher flywheel) ----
+
+    @Test
+    fun velocityGain_satisfiesFirstOrderIdentity() {
+        val kV = 0.0004
+        val kA = 0.0002 // tau_openLoop = kA/kV = 0.5 s
+        val g = PolePlacement.velocityLoopGain(kV, kA, closedLoopTau = 0.4)
+        // tau_cl = kA/(kV+kP)  ⇒  kP = kA/tau_cl − kV
+        assertEquals(kA / 0.4 - kV, g.kP, 1e-12)
+        assertEquals(kA / kV, g.openLoopTau, 1e-12)
+        assertFalse(g.kpCapped)
+    }
+
+    @Test
+    fun velocityGain_fasterClosedLoopRaisesKp() {
+        val kV = 0.0004
+        val kA = 0.0002
+        val slow = PolePlacement.velocityLoopGain(kV, kA, 0.45)
+        val fast = PolePlacement.velocityLoopGain(kV, kA, 0.30)
+        assertTrue("shorter closed-loop tau -> larger kP", fast.kP > slow.kP)
+    }
+
+    @Test
+    fun velocityGain_capsKpToStayFeedforwardDominant() {
+        // Aggressive closed loop (tau_cl << tau_openLoop) would push kP well past kV; the default
+        // cap (kP <= kV) holds it, keeping the loop feedforward-dominant.
+        val kV = 0.0004
+        val kA = 0.0002 // tau_openLoop = 0.5 s
+        val g = PolePlacement.velocityLoopGain(kV, kA, closedLoopTau = 0.05)
+        assertTrue(g.kpCapped)
+        assertEquals(kV, g.kP, 1e-12)
+    }
+
+    @Test
+    fun velocityGain_clampsKpToZeroWhenClosedLoopSlowerThanOpenLoop() {
+        // closedLoopTau > openLoopTau would imply a negative kP (slowing the loop below the plant);
+        // clamp to 0 -- pure feedforward.
+        val kV = 0.0004
+        val kA = 0.0002 // tau_openLoop = 0.5 s
+        val g = PolePlacement.velocityLoopGain(kV, kA, closedLoopTau = 0.8)
+        assertEquals(0.0, g.kP, 0.0)
+    }
+
+    @Test
+    fun characterization_velocityGainLandsNearLauncherDefault() {
+        // Plausible flywheel plant + a conservative 1.5x speed-up (tau_cl = tau_openLoop/1.5) should
+        // land kP near the launcher's hand-picked 0.0003. Coarse sanity band, not an exact match.
+        val kV = 0.0004
+        val kA = 0.00016 // tau_openLoop = 0.4 s
+        val g = PolePlacement.velocityLoopGain(kV, kA, closedLoopTau = 0.4 / 1.5)
+        assertTrue("kP=${g.kP} outside plausible band", g.kP in 0.0001..0.0006)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun velocityGain_rejectsNonPositiveKv() {
+        PolePlacement.velocityLoopGain(kV = 0.0, kA = 0.0002, closedLoopTau = 0.4)
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun rejectsNonPositiveKa() {
         PolePlacement.positionGains(kV = 0.001, kA = 0.0, settlingTimeSeconds = 0.2)

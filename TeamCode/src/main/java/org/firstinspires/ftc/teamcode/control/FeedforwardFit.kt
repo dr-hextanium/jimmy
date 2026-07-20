@@ -57,6 +57,13 @@ object FeedforwardFit {
         val n: Int,
     )
 
+    data class SingleDirectionResult(
+        val kV: Double,               // slope (power per unit velocity)
+        val kStatic: Double,          // intercept (breakaway power in the driven direction)
+        val r2: Double,
+        val n: Int,
+    )
+
     /**
      * Fit `power = kStatic*sign(v) + kV*v` to [samples], one line per travel direction.
      *
@@ -82,6 +89,23 @@ object FeedforwardFit {
         val kStatic = (kStaticPositive + kStaticNegative) / 2.0
 
         return SteadyStateResult(kV, kStatic, kStaticPositive, kStaticNegative, posFit, negFit)
+    }
+
+    /**
+     * Single-direction steady-state fit: `power = kStatic + kV*v` over one travel direction, for a
+     * mechanism that only ever moves one way (the launcher flywheel is clamped to `[0,1]` power and
+     * cannot reverse, so [fitSteadyState]'s two-direction requirement can't be met). `kV` is the line
+     * slope, `kStatic` its intercept (the breakaway power in the driven direction).
+     *
+     * [minSpeed] is in the sample's velocity unit (for the flywheel, TPS -- pass ~`MIN_TPS`); it drops
+     * near-stationary powered samples below breakaway, which would otherwise corrupt the intercept.
+     * Samples are taken by absolute velocity so the same call works whichever sign the encoder reports.
+     */
+    fun fitSteadyStateSingleDirection(samples: List<Sample>, minSpeed: Double): SingleDirectionResult {
+        val usable = samples.filter { abs(it.velocity) > minSpeed }
+        require(usable.size >= 2) { "need >= 2 samples with |v| > $minSpeed, had ${usable.size}" }
+        val fit = ols(usable.map { it.velocity }, usable.map { it.power })
+        return SingleDirectionResult(fit.slope, fit.intercept, fit.r2, fit.n)
     }
 
     /**

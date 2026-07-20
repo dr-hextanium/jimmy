@@ -7,11 +7,13 @@ import org.firstinspires.ftc.teamcode.control.ShooterModel
 import org.firstinspires.ftc.teamcode.hardware.Robot
 import org.firstinspires.ftc.teamcode.testfakes.FakeDcMotorEx
 import org.firstinspires.ftc.teamcode.testfakes.FakeServo
+import org.firstinspires.ftc.teamcode.testfakes.FakeTimeSource
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import kotlin.math.abs
 
 /**
  * Tests for the Launcher (flywheel) subsystem: speed measurement, at-speed detection, the scalar
@@ -27,6 +29,7 @@ class LauncherTest {
     private lateinit var right: FakeDcMotorEx
     private lateinit var hood: FakeServo
     private lateinit var launcher: Launcher
+    private lateinit var clock: FakeTimeSource
 
     @Before
     fun setUp() {
@@ -35,6 +38,9 @@ class LauncherTest {
         Launcher.kS = 0.0
         Launcher.kV = 0.0004
         Launcher.kP = 0.0003
+        // Current-limited spin-up OFF by default -> the plain feedforward+P loop these tests pin.
+        Launcher.SPINUP_CURRENT_LIMIT_A = 0.0
+        Launcher.SPINUP_RECOVERY_PER_SEC = 6.0
 
         // MAX_TPS (and the aim path) come from ShooterModel; pin it to defaults.
         ShooterModel.FLYWHEEL_DIAMETER_MM = 72.0
@@ -52,12 +58,27 @@ class LauncherTest {
         left = FakeDcMotorEx()
         right = FakeDcMotorEx()
         hood = FakeServo()
-        launcher = Launcher(left, right, hood)
+        clock = FakeTimeSource()
+        launcher = Launcher(left, right, hood, clock)
+    }
+
+    // Drive the current-limit loop deterministically: set both motors' current, step the clock, run
+    // read()+update(). Returns the resulting commanded power.
+    private fun stepWithCurrent(amps: Double, dt: Double): Double {
+        left.fakeCurrent = amps
+        right.fakeCurrent = amps
+        clock.advance(dt)
+        launcher.read()
+        launcher.update()
+        return launcher.currentPower
     }
 
     private fun setMeasuredVelocities(l: Double, r: Double) {
         left.fakeVelocity = l
         right.fakeVelocity = r
+        // averageTPS is now sampled in read() (the loop's read phase), not recomputed live in the
+        // getter, so mirror the loop order: change the hardware, then read() before asserting.
+        launcher.read()
     }
 
     // ---- averageTPS ----
@@ -69,6 +90,34 @@ class LauncherTest {
 
         setMeasuredVelocities(-500.0, -1500.0)
         assertEquals(1000.0, launcher.averageTPS, 1e-9)
+    }
+
+    @Test
+    fun readOnce_equalsLiveExpression() {
+        // read() must compute exactly the old getter's expression, for any sign combination.
+        for ((l, r) in listOf(1000.0 to -2000.0, -500.0 to -1500.0, 0.0 to 0.0, 3000.0 to 3000.0, -100.0 to 250.0)) {
+            left.fakeVelocity = l
+            right.fakeVelocity = r
+            launcher.read()
+            assertEquals((abs(l) + abs(r)) / 2.0, launcher.averageTPS, 1e-12)
+        }
+    }
+
+    @Test
+    fun read_sampledOnceIsStableAcrossManyUpdatesWithoutReread() {
+        launcher.targetTPS = 2000.0
+        setMeasuredVelocities(2000.0, 2000.0) // read() samples 2000
+        launcher.update()
+        val power = launcher.currentPower
+
+        // Change the hardware velocity but do NOT read() again: update() must consume the last sampled
+        // value, proving it no longer reads the motors itself (read/update/write contract).
+        left.fakeVelocity = 500.0
+        right.fakeVelocity = 500.0
+        repeat(5) { launcher.update() }
+
+        assertEquals("averageTPS must reflect the last read(), not live hardware", 2000.0, launcher.averageTPS, 1e-9)
+        assertEquals("update() must not re-sample velocity between read()s", power, launcher.currentPower, 1e-9)
     }
 
     // ---- atSpeed / isReady ----
@@ -276,5 +325,68 @@ class LauncherTest {
         launcher.reset()
         launcher.write()
         assertEquals(Launcher.HOOD_HIGH, hood.getPosition(), 1e-9)
+    }
+
+    // ---- current-limited spin-up ----
+
+    @Test
+    fun disabledLimit_ignoresCurrentAndRunsPlainLoop() {
+        // SPINUP_CURRENT_LIMIT_A = 0 (default) -> even an enormous current leaves the cap at 1.0 and
+        // the commanded power equals the plain feedforward+P output.
+        launcher.reset()
+        launcher.targetTPS = 2000.0 // FF+P saturates: 0.0004*2000 + 0.0003*2000 = 1.4 -> clamps to 1.0
+        val power = stepWithCurrent(999.0, 0.02)
+        assertEquals(1.0, launcher.powerCap, 1e-9)
+        assertEquals(1.0, power, 1e-9) // == the plain-loop clamp, unaffected by current
+    }
+
+    @Test
+    fun enabledLimit_capsPowerWhenCurrentExceedsBudget() {
+        launcher.reset()
+        Launcher.SPINUP_CURRENT_LIMIT_A = 12.0
+        launcher.targetTPS = 2000.0 // FF+P wants ~1.4 (saturated)
+        // Draw twice the limit -> multiplicative backoff halves the cap in one step.
+        val power = stepWithCurrent(24.0, 0.02)
+        assertTrue("cap should drop below 1", launcher.powerCap < 1.0)
+        assertEquals(0.5, launcher.powerCap, 1e-9)
+        // Commanded power is the cap (min of the saturated FF+P and the cap).
+        assertEquals(launcher.powerCap, power, 1e-9)
+    }
+
+    @Test
+    fun enabledLimit_recoversToPlainLoopAsCurrentFalls() {
+        launcher.reset()
+        Launcher.SPINUP_CURRENT_LIMIT_A = 12.0
+        launcher.targetTPS = 2000.0
+        stepWithCurrent(24.0, 0.02) // cap -> 0.5
+        assertTrue(launcher.powerCap < 1.0)
+        // Current now well under the limit (wheel at speed / low draw): cap re-opens over a few loops.
+        repeat(20) { stepWithCurrent(3.0, 0.05) }
+        assertEquals(1.0, launcher.powerCap, 1e-6)
+        assertEquals(1.0, launcher.currentPower, 1e-6) // back to the saturated plain-loop output
+    }
+
+    @Test
+    fun badCurrentReading_disablesLimitingEvenWhenEnabled() {
+        launcher.reset()
+        Launcher.SPINUP_CURRENT_LIMIT_A = 12.0
+        launcher.targetTPS = 2000.0
+        val power = stepWithCurrent(Double.NaN, 0.02) // sensor glitch -> failsafe: no limiting
+        assertEquals(1.0, launcher.powerCap, 1e-9)
+        assertEquals(1.0, power, 1e-9)
+    }
+
+    @Test
+    fun limiterUsesWorseOfTheTwoMotorCurrents() {
+        launcher.reset()
+        Launcher.SPINUP_CURRENT_LIMIT_A = 12.0
+        launcher.targetTPS = 2000.0
+        // One motor fine, the other at 2x the limit -> the max drives the backoff (per-motor protection).
+        left.fakeCurrent = 4.0
+        right.fakeCurrent = 24.0
+        clock.advance(0.02)
+        launcher.read()
+        launcher.update()
+        assertEquals(0.5, launcher.powerCap, 1e-9)
     }
 }
