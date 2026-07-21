@@ -265,7 +265,17 @@ class Turret(
         // about zero when the turret is settled on target.
         val staticFF = if (abs(raw) > 1e-6) kStatic * sign(raw) else 0.0
 
-        motorPower = Range.clip(raw + staticFF, -1.0, 1.0)
+        // Hold deadband: once the profile has settled (not commanding motion) and we're within
+        // HOLD_DEADBAND_DEG of the setpoint, cut power. Static friction holds the turret at rest, so
+        // this breaks the fast, small-amplitude limit cycle the static-friction feedforward
+        // (kStatic*sign(error)) otherwise bang-bangs around the target. A moving goal-lock target keeps
+        // profiledVelocity nonzero, so tracking is never cut.
+        val holding = abs(profiledVelocity) < HOLD_VELOCITY_DEG_S
+        motorPower = if (holding && abs(posError) < HOLD_DEADBAND_DEG) {
+            0.0
+        } else {
+            Range.clip(raw + staticFF, -1.0, 1.0)
+        }
 
         // Soft stop: never keep driving PAST the travel limits. Uses the calibrated absolute angle,
         // so it catches a runaway/overshoot beyond MIN_ANGLE..MAX_ANGLE (e.g. a bad goal-lock target)
@@ -522,6 +532,14 @@ class Turret(
 
         var ANGLE_TOLERANCE_DEGREES = 0.2
         var POWER_UPDATE_THRESHOLD = 0.01
+
+        // Hold deadband -- breaks the static-friction limit cycle (the fast, small buzz at rest/lock):
+        // within HOLD_DEADBAND_DEG of a SETTLED setpoint, motor power is cut so kStatic*sign(error)
+        // can't bang-bang across the target; static friction holds it. HOLD_VELOCITY_DEG_S gates this to
+        // a settled profile so a MOVING goal-lock target is never cut. Raise HOLD_DEADBAND_DEG until the
+        // buzz stops -- it bounds the resting aim error (the mechanical stiction floor is a few deg anyway).
+        var HOLD_DEADBAND_DEG = 1.5
+        var HOLD_VELOCITY_DEG_S = 8.0
 
         // Largest loop dt (s) we'll integrate the profile over; longer gaps are treated as a hold.
         private const val MAX_DT = 0.1
