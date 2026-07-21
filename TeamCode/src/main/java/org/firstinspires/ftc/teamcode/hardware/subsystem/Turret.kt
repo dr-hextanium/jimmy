@@ -16,6 +16,10 @@ import org.firstinspires.ftc.teamcode.control.TrapezoidalProfile
 import org.firstinspires.ftc.teamcode.hardware.Globals
 import org.firstinspires.ftc.teamcode.hardware.ISubsystem
 import org.firstinspires.ftc.teamcode.hardware.Robot
+import org.firstinspires.ftc.teamcode.hardware.subsystem.Turret.Companion.MAX_ACCELERATION
+import org.firstinspires.ftc.teamcode.hardware.subsystem.Turret.Companion.MAX_VELOCITY
+import org.firstinspires.ftc.teamcode.hardware.subsystem.Turret.Companion.MOTOR_ANGLE_SIGN
+import org.firstinspires.ftc.teamcode.hardware.subsystem.Turret.Companion.USE_MOTOR_FUSION
 import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.exp
@@ -461,8 +465,8 @@ class Turret(
         // Raw encoder angle (deg) when the turret sits at its true zero position. Must be
         // calibrated on-robot: home the turret, read the raw encoder voltages, convert with
         // voltageToDegrees(), and set these to the results.
-        var ENCODER_12T_ZERO_OFFSET_DEG = 0.0
-        var ENCODER_13T_ZERO_OFFSET_DEG = 0.0
+        var ENCODER_12T_ZERO_OFFSET_DEG = 263.6
+        var ENCODER_13T_ZERO_OFFSET_DEG = 114.1
 
         // Fused-angle smoothing (FadingMemoryFilter). ANGLE_FILTER_TAU is the smoothing time constant
         // in seconds: larger = steadier position but more tracking lag (the turret goal-locks a MOVING
@@ -492,17 +496,17 @@ class Turret(
         // Motion-profile limits. Default max velocity is roughly the 1150 RPM motor's free speed
         // through the 137:15 reduction (~755 deg/s); acceleration is a generous starting guess.
         // Both are on-robot tunables.
-        var MAX_VELOCITY = 700.0      // deg/s
+        var MAX_VELOCITY = 250.0      // deg/s
         var MAX_ACCELERATION = 3600.0 // deg/s^2
 
         // Profiled feedforward + feedback gains (on-robot tunables).
-        var kP = 0.038      // power per deg of position error
-        var kV = 0.0012     // power per deg/s of profiled velocity (~1 / MAX_VELOCITY)
-        var kA = 0.0        // power per deg/s^2 of profiled acceleration
+        var kP = 0.0300      // power per deg of position error
+        var kV = 0.001245     // power per deg/s of profiled velocity (~1 / MAX_VELOCITY)
+        var kA = 0.000094        // power per deg/s^2 of profiled acceleration
         var kD = 0.0        // power per deg/s of velocity error (off by default; velocity comes from the
                             // FadingMemoryFilter, or the motor tachometer when USE_MOTOR_FUSION is on
                             // -- cleaner -- so enable + tune on robot for extra damping)
-        var kStatic = 0.02  // static-friction feedforward
+        var kStatic = 0.1571  // static-friction feedforward
 
         var ANGLE_TOLERANCE_DEGREES = 0.2
         var POWER_UPDATE_THRESHOLD = 0.01

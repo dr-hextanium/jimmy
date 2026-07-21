@@ -46,15 +46,15 @@ object ShooterModel {
     var TARGET_HEIGHT_DELTA_M = 0.5
 
     // --- Hood: achievable launch-angle range and its linear servo calibration. CALIBRATE on robot. ---
-    var HOOD_MIN_ANGLE_RAD = Math.toRadians(30.0)
-    var HOOD_MAX_ANGLE_RAD = Math.toRadians(60.0)
+    var HOOD_MIN_ANGLE_RAD = Math.toRadians(25.0)
+    var HOOD_MAX_ANGLE_RAD = Math.toRadians(63.0)
 
     /** Hood servo position at [HOOD_MIN_ANGLE_RAD] / [HOOD_MAX_ANGLE_RAD] (defaults span the safe travel). */
-    var SERVO_AT_MIN_ANGLE = 0.25
-    var SERVO_AT_MAX_ANGLE = 0.905
+    var SERVO_AT_MIN_ANGLE = 0.845
+    var SERVO_AT_MAX_ANGLE = 0.465
 
     /** Flywheel ceiling in ticks/sec; the required speed is clamped to this. */
-    var MAX_TPS = 2500.0
+    var MAX_TPS = 1230.0
 
     private fun flywheelRadiusM() = FLYWHEEL_DIAMETER_MM / 2.0 / 1000.0
     private fun counterRollerRadiusM() = COUNTER_ROLLER_DIAMETER_MM / 2.0 / 1000.0

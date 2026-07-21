@@ -51,7 +51,7 @@ class Intake(
 		const val POWER_INTAKE = 1.0
 		const val POWER_REVERSE = -1.0
 
-        const val GATE_OPEN_POSITION = 0.700
-        const val GATE_CLOSED_POSITION = 0.445
+        const val GATE_OPEN_POSITION = 1.0
+        const val GATE_CLOSED_POSITION = 0.795
 	}
 }

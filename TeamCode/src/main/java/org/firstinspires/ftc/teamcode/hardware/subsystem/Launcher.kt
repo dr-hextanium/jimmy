@@ -4,7 +4,6 @@ import com.qualcomm.robotcore.hardware.DcMotor.RunMode
 import com.qualcomm.robotcore.hardware.DcMotor.ZeroPowerBehavior.BRAKE
 import com.qualcomm.robotcore.hardware.DcMotorEx
 import com.qualcomm.robotcore.hardware.DcMotorSimple
-import com.qualcomm.robotcore.hardware.DcMotorSimple.Direction.REVERSE
 import com.qualcomm.robotcore.hardware.Gamepad
 import com.qualcomm.robotcore.hardware.Servo
 import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit
@@ -14,6 +13,7 @@ import org.firstinspires.ftc.teamcode.control.TimeSource
 import org.firstinspires.ftc.teamcode.hardware.Globals
 import org.firstinspires.ftc.teamcode.hardware.ISubsystem
 import org.firstinspires.ftc.teamcode.hardware.Robot
+import org.firstinspires.ftc.teamcode.hardware.subsystem.Launcher.Companion.SPINUP_CURRENT_LIMIT_A
 import org.firstinspires.ftc.teamcode.utility.absPercentDifference
 import org.firstinspires.ftc.teamcode.utility.map
 import org.firstinspires.ftc.teamcode.utility.percentDifference
@@ -125,8 +125,8 @@ class Launcher(
         // the low end of the usable travel -- until the driver first moves it in TeleOp.
         targetHoodPosition = HOOD_HIGH
 
-        right.direction = REVERSE
-        left.direction = DcMotorSimple.Direction.FORWARD
+        right.direction = DcMotorSimple.Direction.FORWARD
+        left.direction = DcMotorSimple.Direction.REVERSE
 
         motors.forEach {
             it.zeroPowerBehavior = BRAKE
@@ -205,8 +205,8 @@ class Launcher(
     }
 
     companion object {
-        const val HOOD_LOW = 0.905
-        const val HOOD_HIGH = 0.25
+        const val HOOD_LOW = 0.845
+        const val HOOD_HIGH = 0.465
 
         const val MIN_TPS = 100.0
 
@@ -216,9 +216,9 @@ class Launcher(
         const val AT_SPEED_TOLERANCE = 0.05 // 5% tolerance
 
         // Feedforward-first velocity-controller gains (on-robot tunables).
-        var kS = 0.0      // static power offset
-        var kV = 0.0004   // power per TPS of target (~ 1 / MAX_TPS)
-        var kP = 0.0003   // power per TPS of error (kept small; feedforward carries the load)
+        var kS = 0.1182      // static power offset
+        var kV = 0.000682   // power per TPS of target (~ 1 / MAX_TPS)
+        var kP = 0.0015     // power per TPS of error (kept small; feedforward carries the load)
 
         // Current-limited spin-up (on-robot tunables, set from "Launcher Auto-Tune").
         // SPINUP_CURRENT_LIMIT_A <= 0 DISABLES limiting -> plain feedforward+P (the shipped default).

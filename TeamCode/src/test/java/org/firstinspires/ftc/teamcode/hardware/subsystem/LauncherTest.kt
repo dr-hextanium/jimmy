@@ -301,8 +301,8 @@ class LauncherTest {
 
         launcher.reset()
 
-        assertEquals(DcMotorSimple.Direction.FORWARD, left.getDirection())
-        assertEquals(DcMotorSimple.Direction.REVERSE, right.getDirection())
+        assertEquals(DcMotorSimple.Direction.REVERSE, left.getDirection())
+        assertEquals(DcMotorSimple.Direction.FORWARD, right.getDirection())
         assertEquals(DcMotor.ZeroPowerBehavior.BRAKE, left.getZeroPowerBehavior())
         assertEquals(DcMotor.ZeroPowerBehavior.BRAKE, right.getZeroPowerBehavior())
         assertEquals(15.0, left.currentAlertAmps, 1e-9)
