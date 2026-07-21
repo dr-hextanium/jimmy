@@ -266,6 +266,14 @@ class Turret(
         val staticFF = if (abs(raw) > 1e-6) kStatic * sign(raw) else 0.0
 
         motorPower = Range.clip(raw + staticFF, -1.0, 1.0)
+
+        // Soft stop: never keep driving PAST the travel limits. Uses the calibrated absolute angle,
+        // so it catches a runaway/overshoot beyond MIN_ANGLE..MAX_ANGLE (e.g. a bad goal-lock target)
+        // before the physical stops, while still allowing power that moves back toward valid range.
+        // (+power increases currentAngle -- confirmed on-robot -- so cut positive drive past the top
+        // and negative drive past the bottom.)
+        if (currentAngle > MAX_ANGLE + SOFT_STOP_MARGIN && motorPower > 0.0) motorPower = 0.0
+        if (currentAngle < MIN_ANGLE - SOFT_STOP_MARGIN && motorPower < 0.0) motorPower = 0.0
     }
 
     /**
@@ -492,6 +500,10 @@ class Turret(
         // ~+/-180 physical travel; run +/-150 in code to keep margin off the hard stops.
         var MAX_ANGLE = 150.0
         var MIN_ANGLE = -150.0
+        // Soft-stop margin (deg): past MIN/MAX by this much, the absolute-angle guard in update()
+        // stops driving further out (recovery inward is still allowed). A hardware backstop against a
+        // runaway/overshooting target reaching the physical stops -- independent of the target clamp.
+        var SOFT_STOP_MARGIN = 10.0
 
         // Motion-profile limits. Default max velocity is roughly the 1150 RPM motor's free speed
         // through the 137:15 reduction (~755 deg/s); acceleration is a generous starting guess.
