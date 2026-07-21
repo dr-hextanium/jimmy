@@ -487,7 +487,7 @@ class Turret(
         // runaway-class, so this defaults OFF and must be enabled on-robot only AFTER confirming the
         // sign in "Turret Encoder Debug" (jog positive -> both the fused-absolute angle and the motor
         // prediction must increase). When on, motor ticks predict motion and the absolute corrects it.
-        var USE_MOTOR_FUSION = false
+        var USE_MOTOR_FUSION = true
         var MOTOR_ANGLE_SIGN = 1.0           // +1/-1: motor-tick direction vs. turret positive
         var MOTOR_FUSION_TAU = 0.10          // s crossover; larger = trust the motor more (slower correct)
         var MOTOR_FUSION_GATE = 15.0         // deg; must sit ABOVE gear backlash and BELOW one seam (~31.5)
@@ -512,10 +512,10 @@ class Turret(
         var MAX_ACCELERATION = 3600.0 // deg/s^2
 
         // Profiled feedforward + feedback gains (on-robot tunables).
-        var kP = 0.0300      // power per deg of position error
+        var kP = 0.005      // power per deg of position error
         var kV = 0.001245     // power per deg/s of profiled velocity (~1 / MAX_VELOCITY)
         var kA = 0.000094        // power per deg/s^2 of profiled acceleration
-        var kD = 0.0        // power per deg/s of velocity error (off by default; velocity comes from the
+        var kD = 0.0000      // power per deg/s of velocity error (off by default; velocity comes from the
                             // FadingMemoryFilter, or the motor tachometer when USE_MOTOR_FUSION is on
                             // -- cleaner -- so enable + tune on robot for extra damping)
         var kStatic = 0.1571  // static-friction feedforward
