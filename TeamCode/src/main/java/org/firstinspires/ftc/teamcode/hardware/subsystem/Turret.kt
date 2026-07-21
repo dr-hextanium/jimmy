@@ -485,8 +485,9 @@ class Turret(
         var MOTOR_HEALTH_MIN_DELTA_DEG = 0.5
         var MOTOR_HEALTH_MAX_DISAGREE = 12
 
-        var MAX_ANGLE = 90.0
-        var MIN_ANGLE = -90.0
+        // ~+/-180 physical travel; run +/-150 in code to keep margin off the hard stops.
+        var MAX_ANGLE = 150.0
+        var MIN_ANGLE = -150.0
 
         // Motion-profile limits. Default max velocity is roughly the 1150 RPM motor's free speed
         // through the 137:15 reduction (~755 deg/s); acceleration is a generous starting guess.

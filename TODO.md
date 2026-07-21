@@ -146,9 +146,10 @@ cleaner velocity, near-zero-lag position, and stronger revolution disambiguation
       seam ≈ 31.5°). Then revisit `kD` — the tachometer velocity is cleaner than the filtered absolute.
 
 ### Turret travel limits 🔴 (prevents winding up cables / hitting hard stops)
-`Turret.kt:457-458` — `MAX_ANGLE` (`90.0`), `MIN_ANGLE` (`-90.0`).
-- [ ] Set to the real mechanical travel of the turret (degrees from zero). `setTargetAngle` clamps
-      to these.
+`Turret.kt:488-489` — `MAX_ANGLE`, `MIN_ANGLE`.
+- [x] Set to the real mechanical travel of the turret (degrees from zero). `setTargetAngle` clamps
+      to these. **Set to ±150** (this turret has ~±180 physical travel; ±150 keeps margin off the
+      hard stops). Related: `TurretAutoTune.HARD_LIMIT_DEG` was raised 70→120 for the same wider travel.
 
 ### Flywheel slip efficiency
 `ShooterModel.kt:43` — `SLIP_EFFICIENCY` (default `0.85`). Single knob folding all compression/slip

@@ -435,8 +435,11 @@ class TurretAutoTune : OpMode() {
         private const val SIGN_PROBE_TIMEOUT = 1.5
 
         // Travel band (deg from the centred start). Hard limit is the independent backstop; the sweep
-        // edges and record band sit well inside it. Turret travel is ~+/-90, so ~20 deg of margin.
-        private const val HARD_LIMIT_DEG = 70.0
+        // edges and record band sit well inside it. This turret has ~+/-180 physical travel (~+/-150 in
+        // code), so the backstop is generous: it must clear the dynamic-step coast overshoot (~76 deg
+        // observed at the 0.55 from-rest step -- power is cut at RECORD_BAND then the turret brakes)
+        // yet still catch a runaway well before the physical stop.
+        private const val HARD_LIMIT_DEG = 120.0
         private const val BAND_EDGE_DEG = 55.0
         private const val RECORD_BAND_DEG = 45.0
         private const val DYN_START_EDGE_DEG = 55.0
