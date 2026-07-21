@@ -145,8 +145,14 @@ class Launcher(
     override fun read() {
         measuredTPS = (abs(left.velocity) + abs(right.velocity)) / 2.0
         // Per-motor current for the spin-up limiter (magnitude; the REVERSE motor may report signed).
-        rawCurrentLeft = left.getCurrent(CurrentUnit.AMPS)
-        rawCurrentRight = right.getCurrent(CurrentUnit.AMPS)
+        // getCurrent() is NOT in the Lynx bulk read -- each call is its own blocking I2C transaction
+        // (several ms, worse if these motors are on the expansion hub), so only pay for it when the
+        // current-limited spin-up is actually enabled. OFF by default (SPINUP_CURRENT_LIMIT_A <= 0) =>
+        // skip two I2C round-trips every loop, a large loop-time saving on an otherwise bulk-cached loop.
+        if (SPINUP_CURRENT_LIMIT_A > 0.0) {
+            rawCurrentLeft = left.getCurrent(CurrentUnit.AMPS)
+            rawCurrentRight = right.getCurrent(CurrentUnit.AMPS)
+        }
     }
 
     override fun update() {
