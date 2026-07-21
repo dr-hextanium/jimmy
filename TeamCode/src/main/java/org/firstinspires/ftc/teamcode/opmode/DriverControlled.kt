@@ -104,15 +104,9 @@ open class DriverControlled(val isRed: Boolean, initialHeading: Double) : BaseTe
         // Field-centric teleop drive + turret/heading goal-lock. Lives here (not in BaseTemplate.loop())
         // so it never runs during autonomous, which drives through Pedro. setTeleOpDrive stores the
         // movement vectors; they take effect on the next loop's follower.update() (in Robot.read()).
-        val robotPose = Robot.follower.pose
-        face(targetGoalPose, robotPose)
-
-        val angularAdjustment =
-            if (goalLock) {
-                controller.run()
-            } else {
-                (-gamepad1.right_stick_x).toDouble()
-            }
+        // Turret goal-lock (SQUARE) aims the TURRET only; the chassis stays fully driver-controlled,
+        // so the robot no longer auto-rotates toward the goal.
+        val angularAdjustment = (-gamepad1.right_stick_x).toDouble()
 
         Robot.follower.setTeleOpDrive(
             (-gamepad1.left_stick_y).toDouble(),

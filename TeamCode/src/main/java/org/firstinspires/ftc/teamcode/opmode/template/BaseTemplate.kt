@@ -7,7 +7,6 @@ import com.pedropathing.geometry.Pose
 import com.pedropathing.math.MathFunctions.normalizeAngleSigned
 import com.pedropathing.math.Vector
 import com.qualcomm.robotcore.eventloop.opmode.OpMode
-import org.firstinspires.ftc.teamcode.command.launcher.ManuallyLaunch
 import org.firstinspires.ftc.teamcode.hardware.Globals
 import org.firstinspires.ftc.teamcode.hardware.Robot
 import kotlin.math.atan2
@@ -77,10 +76,8 @@ abstract class BaseTemplate(var initialHeading: Double = 0.0) : OpMode() {
         loopMaxMs = 0.0
 
         if (!Globals.AUTO) {
-            Robot.scheduler.schedule(
-                ManuallyLaunch { 0.71 },
-            )
-
+            // No flywheel auto-prespin at teleop start -- the driver spins it up via gamepad2 dpad.
+            // (Re-add `ManuallyLaunch { 0.71 }` here to prespin for competition.)
             Robot.follower.startTeleopDrive()
 		}
 	}
